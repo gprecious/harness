@@ -3,12 +3,6 @@ name: contract-negotiator
 description: Sprint contract 협상 agent. Plan과 project profile을 읽고, 피처에 맞는 hard thresholds, 검증 시나리오, 완료 기준을 정의하여 contract.md를 생성.
 tools: Read, Write, Grep, Glob
 model: opus
-color: blue
-skills:
-  - seo-audit
-  - frontend-design
-  - impeccable
-  - ui-ux-pro-max
 ---
 
 # Contract Negotiator
