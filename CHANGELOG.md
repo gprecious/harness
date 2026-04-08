@@ -1,0 +1,35 @@
+# Changelog
+
+All notable changes to harness will be documented in this file.
+
+## [0.2.0] - 2026-04-08
+
+### Added
+- **Research phase**: Phase 1 PLAN에 prior art research 단계 추가
+  - 새 agent: `research-scout` — 4개 sub-scout(paper/video/docs/community) 병렬 dispatch
+  - 새 template: `research.md`
+  - 무료 API: arXiv, Semantic Scholar, OpenAlex, HN Algolia, Reddit, Stack Exchange
+  - YouTube: yt-dlp CLI 활용 (선택 의존성)
+  - 캐시: `docs/wisdom/research/{topic-slug}/`
+- **Version tracking**: project-profile.md에 `harness_version` 필드
+  - `/feature` 시작 시 plugin/project 버전 비교
+  - 불일치 시 비차단 알림
+- **Research Hints**: project-profile.md에 도메인/블로그/논문 키워드 섹션
+- **Update mechanism**: `/feature --init --refresh`로 기존 프로젝트 마이그레이션
+
+### Changed
+- Phase 1 PLAN: code-explorer와 research-scout 병렬 실행
+- code-architect: research.md를 추가 input으로 참조
+
+### Migration from 0.1.0
+- 자동: plugin 업데이트 후 새 기능이 즉시 사용 가능 (additive)
+- 권장: `/feature --init --refresh` 실행하여 project-profile.md에 새 필드 추가
+
+## [0.1.0] - 2026-03-30
+
+### Added
+- Initial harness release
+- 7-phase pipeline: PREFLIGHT → PLAN → CONTRACT → TEST → BUILD_EVALUATE → INTEGRATE → LEARN
+- 5 agents: contract-negotiator, test-architect, design-evaluator, test-healer, wisdom-extractor
+- 4-layer hooks: phase-gate, evaluation-gate, session-boundary, post-compact-restore
+- harness-lint.sh computational feedforward validator
