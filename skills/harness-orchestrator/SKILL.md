@@ -8,6 +8,19 @@ version: 0.1.0
 
 피처 개발의 7-phase 파이프라인을 제어하는 오케스트레이터.
 
+## Version Check
+
+`/feature` 호출 시 최우선으로 plugin 버전과 project 버전을 비교한다.
+
+1. plugin version: `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`의 `version` 필드
+2. project version: `docs/harness/project-profile.md`의 `harness_version` 필드 (없으면 "0.1.0"으로 간주)
+3. 비교 결과:
+   - 일치: 작업 그대로 진행
+   - 불일치 (plugin > project): 사용자에게 비차단 알림 표시
+     - "harness가 v{plugin_version}으로 업데이트되었습니다 (현재 프로젝트: v{project_version}). 변경사항: ${CLAUDE_PLUGIN_ROOT}/CHANGELOG.md 참조. `/feature --init --refresh`로 프로젝트 프로파일을 갱신할 수 있습니다."
+     - 작업은 그대로 진행 (블로킹 X)
+4. project-profile.md 부재 시 (`--init` 미실행 상태): 버전 체크 스킵
+
 ## Modes
 
 ### INIT Mode (`/feature --init`)
@@ -68,8 +81,15 @@ version: 0.1.0
    - 설계 승인 후 다음 단계로
 2. 피처 런 디렉토리 생성: `docs/harness/{YYYY-MM-DD}-{feature-slug}/`
 3. harness-state.md 초기화 (템플릿 기반)
-4. code-explorer agents(2-3개, 병렬) dispatch → `exploration.md` 저장
-5. code-architect agent dispatch → `architecture.md` 저장
+4. **병렬 탐색 (research-scout + code-explorer):**
+   - **research-scout agent dispatch** — feature description + project-profile.md tech stack 기반으로 prior art 탐색
+     - 4개 sub-scout (paper/video/docs/community) 병렬 실행
+     - 결과를 `{run_dir}/research.md` 저장
+     - 캐시: `docs/wisdom/research/{topic-slug}/research.md`
+   - **code-explorer agents (2-3개) 병렬 dispatch** — 코드베이스 탐색
+     - 결과를 `{run_dir}/exploration.md` 저장
+   - 두 agent 그룹은 동시 실행 (병렬)
+5. code-architect agent dispatch — exploration.md + research.md 모두 참조하여 `architecture.md` 작성
 6. `project-profile.md` 참조하여 기존 패턴/컨벤션 맥락 제공
 7. **UI 포함 피처일 때 — Design System Bootstrap:**
    - 참조 디자인(Figma/시안)이 있으면 → 건너뛰기 (CONTRACT에서 체크리스트 생성)
