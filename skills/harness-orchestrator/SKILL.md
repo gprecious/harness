@@ -35,6 +35,8 @@ version: 0.1.0
    - skills.sh (오픈 생태계) → GitHub repo 접근하여 호환성 확인
 3. **project-profile.md 생성**: 템플릿(`${CLAUDE_PLUGIN_ROOT}/templates/project-profile.md`) 기반으로 생성 → `docs/harness/project-profile.md`에 저장
 4. **사용자 검토 checkpoint**: 프로파일 내용 확인 및 보완 요청
+   - 특히 `Research Hints` 섹션을 사용자에게 보여주고 도메인/관심 분야 입력 요청
+   - 입력은 선택 — 비워두면 research-scout가 feature description에서만 키워드 추출
 5. **디렉토리 스캐폴딩**: `docs/harness/`, `docs/wisdom/`, `docs/wisdom/index.md` 생성
 6. **CLAUDE.md 업데이트**: `@docs/harness/project-profile.md`, `@docs/wisdom/index.md` 추가
 7. **Preflight 실행**: Phase 0 의존성 체크

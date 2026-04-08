@@ -27,6 +27,11 @@
 
 ## Test Conventions
 
+## Research Hints
+- domain_keywords: []  # research-scout가 검색 시 보강할 도메인 키워드 (예: "auth", "payment", "ml")
+- preferred_paper_topics: []  # 관심 학술 분야 (예: "TDD", "agent harness")
+- preferred_blogs: []  # 관심 엔지니어링 블로그 도메인 (예: "stripe.com/blog", "netflixtechblog.com")
+
 ## Activated Components
 ### Skills (auto-detected)
 ### Plugins (auto-detected)
