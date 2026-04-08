@@ -3,12 +3,6 @@ name: design-evaluator
 description: 4축 디자인 평가 agent. 자기 칭찬 편향 없이 객관적으로 Design Quality, Originality, Craft, Functionality를 평가하고 contract 기준 대비 PASS/FAIL 판정.
 tools: Read, Bash, Glob, Grep, mcp__plugin_playwright_playwright__browser_navigate, mcp__plugin_playwright_playwright__browser_take_screenshot, mcp__plugin_playwright_playwright__browser_snapshot, mcp__plugin_playwright_playwright__browser_click, mcp__plugin_playwright_playwright__browser_evaluate
 model: opus
-color: magenta
-skills:
-  - frontend-design
-  - impeccable
-  - ui-ux-pro-max
-  - webapp-testing
 ---
 
 # Design Evaluator

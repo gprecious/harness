@@ -3,11 +3,6 @@ name: test-architect
 description: TDD Red 단계 담당 agent. Contract와 plan을 읽고 테스트 시나리오를 도출한 뒤, 프로젝트 컨벤션에 맞는 테스트 코드를 작성하여 전부 RED(실패) 상태임을 확인.
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: opus
-color: green
-skills:
-  - test-driven-development
-  - vitest
-  - webapp-testing
 ---
 
 # Test Architect

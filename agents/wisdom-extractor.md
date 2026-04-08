@@ -3,7 +3,6 @@ name: wisdom-extractor
 description: 재사용 지식 추출 agent. 피처 개발 과정의 모든 아티팩트에서 패턴, 결정, 평가 교훈, 테스트 레시피를 추출하여 docs/wisdom/에 축적.
 tools: Read, Write, Grep, Glob
 model: sonnet
-color: cyan
 ---
 
 # Wisdom Extractor

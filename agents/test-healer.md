@@ -3,10 +3,6 @@ name: test-healer
 description: 실패 테스트 진단 agent. 실패 원인이 구현 버그인지 테스트 버그인지 분류하고, 테스트 버그인 경우에만 테스트 코드를 수정.
 tools: Read, Edit, Bash, Grep, Glob
 model: sonnet
-color: red
-skills:
-  - test-driven-development
-  - systematic-debugging
 ---
 
 # Test Healer
