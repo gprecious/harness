@@ -11,7 +11,7 @@
     {
       "name": "harness",
       "description": "TDD Generator-Evaluator harness. Plan-Contract-Test-Build-Evaluate-Integrate-Learn 자동화 파이프라인.",
-      "source": ".",
+      "source": "./",
       "category": "productivity"
     }
   ]
