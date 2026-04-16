@@ -156,7 +156,7 @@ class Order {
 - Unused private functions / methods (P1)
 - Exports with no in-project consumers and no public-API marker (P1-2)
 - Unreachable statements (P1)
-- Commented-out code blocks > 5 lines (P1)
+- Commented-out code blocks >= 3 lines (P1)
 - Stale feature flags — always-true or always-false in config (P2)
 
 **Example:**
