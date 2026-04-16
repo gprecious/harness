@@ -1,6 +1,6 @@
 {
   "name": "harness",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "TDD Generator-Evaluator harness for feature development. Automates Plan-Contract-Test-Build-Evaluate-Integrate-Learn cycle with prior art research.",
   "author": {
     "name": "taejin"
