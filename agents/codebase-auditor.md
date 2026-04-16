@@ -39,7 +39,7 @@ Before scanning any file, read these in order (use the `Read` tool):
 2. `{{priority_matrix_path}}` — learn Priority 1-5 classification, the Forbidden Auto-Fix list, and the fixture heuristic clarifications (e.g., unused-export convention).
 3. `{{audit_template_path}}` — understand the exact output structure your report must produce.
 4. `{{ignore_file_path}}` if it exists and is not null — parse gitignore-style patterns; every matching path is excluded from scanning.
-5. Every file inside `{{project_references_dir}}` if the directory exists and is non-empty — these document project-specific conventions, anti-patterns, or custom priorities. They override defaults when they conflict.
+5. Every file inside `{{project_references_dir}}` if the directory exists and is non-empty — these document project-specific conventions, anti-patterns, or custom priorities. They override defaults when they conflict. If `{{project_references_dir}}` does not exist, or exists but is empty, proceed with defaults (do not abort). Record `project_references_loaded: <count>` (0 if missing/empty) in the return summary.
 
 If any of (1)-(3) is missing or unreadable, stop and report the failure in your return summary — do not produce a partial audit.
 
@@ -91,6 +91,8 @@ For each category in `categories_to_check` (if `"all"`, use all 9 in the order t
   - Rust: `cargo check` (only if already cached; never trigger a full build)
   Treat linter output as advisory: still classify using the catalog, not the linter's severity.
 
+**Linter failure handling:** If a linter command fails (non-zero exit because the tool is missing, config is invalid, or a crash occurs — not because the tool found issues), record the command + exit code + stderr summary in the return summary under `linter_errors`, and continue with Grep/Read-based heuristics. Do NOT abort the audit. A linter reporting issues (normal non-zero exit for tools like `tsc --noEmit`) is expected behavior, not a failure.
+
 **Cognitive complexity** — for each function (detected by a simple language-aware regex: `function\s+\w+|=>\s*\{|def\s+\w+|func\s+\w+|fn\s+\w+`), compute a SonarQube-style increment:
 - +1 per `if`, `else if`, `switch`/`match` case, `for`, `while`, `catch`, `&&`/`||` boolean operator in a condition
 - +1 extra per level of nesting (applied to the increments above, not to the function itself)
@@ -109,7 +111,7 @@ Consult `priority-matrix.md` for every issue:
 - **Priority 4 (suggestion only):** circular module dependencies, layering violations, DIP violations, divergent change, shotgun surgery, parallel inheritance, unbounded data structures, stale README.
 - **Priority 5 (suggestion only):** module/package restructuring, public API redesign, missing ADRs.
 
-**Forbidden Auto-Fix demotion:** if an issue's file is matched by `.code-improver-ignore`, contains secrets, is >1MB or binary, or lives under `harness/skills/code-improver/**` or `docs/code-improver(-ment)?/**`, force its priority to **at least 3** regardless of pattern. Also record every such demotion — you must surface the count in your return summary.
+**Forbidden Auto-Fix demotion:** If an issue's file path matches one of the Forbidden Auto-Fix categories in priority-matrix.md (detected secrets, files >1MB, binary files), set the issue's Priority to at least 3 regardless of the pattern-based classification. Note: paths excluded in Step 1 never reach this step; this rule is the fallback for edge cases (e.g., a file grew past 1MB during the scan, or a secret was detected mid-file). Record every such demotion — you must surface the count in your return summary.
 
 ### Step 4: Fixture / Convention Handling
 
@@ -128,7 +130,7 @@ If the project lacks a clear consumer AND no convention hint is present, **do no
 Compute and record exactly these numbers (they feed the Metrics Snapshot table):
 
 - **Avg cognitive complexity** over functions with complexity > 0 (two decimals; `0.00` if no functions)
-- **Max cognitive complexity** with `file::function` identifier, e.g. `src/parser.py::parse_config`
+- **Max cognitive complexity** with `file::function` identifier, e.g. `src/parser.py::parse_config`. If multiple functions tie for max complexity, pick the one with the lexicographically smallest `file::function` identifier.
 - **Dead code lines (estimated)** — sum of line ranges of all flagged dead-code issues
 - **Unused imports** — count of issues with pattern `unused_import`
 - **Test coverage** — read from `coverage/coverage-summary.json` (Jest/Vitest), `coverage.xml` (Python), or `coverage.out` (Go) if present; otherwise literal string `"unavailable"`
