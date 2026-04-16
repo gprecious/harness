@@ -1,0 +1,15 @@
+{
+  "fixture_name": "fixture-clean",
+  "description": "Already-clean TypeScript mini-project; auditor must detect zero Priority 1-2 issues",
+  "expected_priority_1_2_count": 0,
+  "expected_priority_3_5_count": 0,
+  "allowed_false_positive_ratio": 0.0,
+  "categories_to_check": [
+    "structural-health",
+    "clarity",
+    "solid",
+    "code-smells",
+    "dead-code",
+    "error-handling"
+  ]
+}
