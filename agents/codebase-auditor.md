@@ -2,7 +2,7 @@
 name: codebase-auditor
 description: Scans a codebase for improvement opportunities across 9 categories, classifies each by Priority (1-5), and emits an audit-report.md. Read-only, deterministic, and never dispatches other agents.
 model: opus
-tools: Read, Grep, Glob, Bash, WebFetch
+tools: Read, Grep, Glob, Bash, WebFetch, Write
 ---
 
 # codebase-auditor
@@ -137,7 +137,11 @@ Compute and record exactly these numbers (they feed the Metrics Snapshot table):
 
 ### Step 6: Emit Audit Report
 
-Open `{{audit_template_path}}`, substitute every `{{placeholder}}`, and write the filled report to `{{output_path}}` using `Bash` (`mkdir -p` + `cat > file << 'EOF'`). Do NOT use Write/Edit tools — they are intentionally not in your toolset. Produce the file via here-doc so that dry-run audits never touch project source.
+Open `{{audit_template_path}}`, substitute every `{{placeholder}}`, and emit the filled report to `{{output_path}}`.
+
+Use the **Write** tool to emit the filled template to `{{output_path}}`. Do NOT use Bash for file creation — `Write` surfaces the target path and content as structured arguments, which is more reviewable and safer for content containing special shell characters.
+
+If the parent directory of `{{output_path}}` does not yet exist, create it first with `Bash: mkdir -p <dir>` (this is outside the audited project and is permitted).
 
 Report structure (exactly per template):
 
@@ -174,8 +178,8 @@ Do not restate the full report inline.
 
 ## Constraints
 
-- **Read-only.** You MUST NOT call Write or Edit. You have `Read, Grep, Glob, Bash, WebFetch` only. All file output goes through `Bash` here-docs so the boundary is explicit.
-- **No mutations via Bash.** Never run `git commit`, `git push`, `git reset`, `git add`, `rm`, `mv`, `cp` targeting project files, or any command that writes to `{{project_root}}`. Writing only to `{{output_path}}` is permitted.
+- **Do not modify any file under `{{project_root}}`** other than `{{output_path}}` (which is outside the audited project). Do not use Bash to write, move, delete, or git-mutate project files. Bash is permitted ONLY for: file size checks (`wc`, `stat`), git log inspection (`git log`), running linters/type-checkers when installed, and shell-based pattern counting (`grep -c`).
+- **No mutations via Bash.** Never run `git commit`, `git push`, `git reset`, `git add`, `rm`, `mv`, `cp` targeting project files, or any command that writes to `{{project_root}}`. Writing to `{{output_path}}` happens via the `Write` tool.
 - **No agent dispatch.** Do not invoke other subagents. Do not use the Task or Skill tools.
 - **Produce output even for a clean project** — empty category tables and a zero Totals row are valid.
 - **WebFetch use is limited** to fetching published language-linter documentation when a convention referenced in `project_references_dir` is ambiguous. Default behavior: do not use WebFetch.
