@@ -25,6 +25,7 @@ auditor_version: {{semver of agent}}
 | Unused imports | {{value}} |
 | Test coverage | {{percent | "unavailable"}} |
 | Files > 300 lines | {{count}} |
+| SOLID violations | {{value}} |
 
 ## Issues by Category
 

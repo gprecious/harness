@@ -35,7 +35,7 @@ harness_version: {{semver}}
 
 Each iteration appends one entry. Used by plateau-detection.md.
 
-- iteration_1: { cognitive_complexity: 0.0, dead_code: 0, solid_violations: 0, test_coverage: 0.0, files_over_300_lines: 0 }
+- iteration_1: { cognitive_complexity: 0.0, dead_code: 0, solid_violations: 0, unused_imports: 0, test_coverage: 0.0, files_over_300_lines: 0 }
 
 ## Plateau Tracking
 
