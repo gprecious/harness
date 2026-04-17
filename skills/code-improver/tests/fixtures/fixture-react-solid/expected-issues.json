@@ -1,0 +1,12 @@
+{
+  "fixture_name": "fixture-react-solid",
+  "description": "React/TS project with SOLID violations (should be Priority 3 suggestions, not auto-fixes)",
+  "expected_priority_3_issues": [
+    { "category": "solid", "principle": "SRP", "file": "src/OrderService.ts" },
+    { "category": "solid", "principle": "DIP", "file": "src/PaymentProvider.ts" },
+    { "category": "solid", "principle": "SRP", "file": "src/Dashboard.tsx" }
+  ],
+  "expected_priority_1_2_total_max": 2,
+  "auto_fix_expected": false,
+  "categories_to_check": ["solid", "code-smells"]
+}

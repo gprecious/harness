@@ -1,0 +1,15 @@
+{
+  "fixture_name": "fixture-typescript-dead-code",
+  "description": "TypeScript project with 10 dead-code patterns",
+  "expected_priority_1_issues": [
+    { "category": "dead-code", "file": "src/unused-imports.ts", "type": "unused_import", "count": 3 },
+    { "category": "dead-code", "file": "src/unused-vars.ts", "type": "unused_variable", "count": 2 },
+    { "category": "dead-code", "file": "src/unreachable.ts", "type": "unreachable_after_return", "count": 1 },
+    { "category": "dead-code", "file": "src/commented.ts", "type": "commented_out_block", "count": 1 },
+    { "category": "dead-code", "file": "src/unused-private.ts", "type": "unused_private_method", "count": 1 },
+    { "category": "dead-code", "file": "src/unused-export.ts", "type": "unused_internal_export", "count": 2 }
+  ],
+  "expected_priority_1_2_total": 10,
+  "allowed_false_positive_ratio": 0.1,
+  "categories_to_check": ["dead-code"]
+}

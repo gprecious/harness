@@ -1,0 +1,8 @@
+[project]
+name = "fixture-python-complexity"
+version = "1.0.0"
+
+[tool.scripts]
+lint = "echo 'lint ok'"
+typecheck = "echo 'typecheck ok'"
+test = "echo 'no tests'"

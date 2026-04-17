@@ -1,0 +1,12 @@
+{
+  "fixture_name": "fixture-python-complexity",
+  "description": "Python project with 3 high-cognitive-complexity functions",
+  "expected_priority_2_issues": [
+    { "category": "clarity", "file": "src/complex_logic.py", "function": "classify", "cognitive_complexity_min": 18 },
+    { "category": "clarity", "file": "src/nested_loops.py", "function": "process_matrix", "cognitive_complexity_min": 15 },
+    { "category": "clarity", "file": "src/long_method.py", "function": "handle_request", "cognitive_complexity_min": 20 }
+  ],
+  "expected_priority_1_2_total": 3,
+  "allowed_false_positive_ratio": 0.1,
+  "categories_to_check": ["clarity"]
+}
