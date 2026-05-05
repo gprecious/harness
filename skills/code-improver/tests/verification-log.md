@@ -68,3 +68,30 @@ harness_version: 0.3.0
 ## Overall Readiness
 
 **Ready for v0.3.0 release.** Two critical/important gaps were uncovered by dry-run and resolved in a single fix commit (`e0e28de`). All four fixtures now dry-run cleanly against the amended prose. Remaining MINOR items are logged for v0.3.1 backlog and do not block release — the safety-critical invariants (no auto-fix of P3+, self-reference guard, change-volume limits) all hold in every fixture trace.
+
+---
+
+## v0.4.0 dry-run — events.jsonl wiring
+
+**Method:** Mentally trace each phase of the SKILL.md against fixture-clean. Confirm every phase boundary emits the documented `bash $LOG ...` instruction, and that the helper script's run-dir discovery finds `docs/code-improvement/<date>/code-improver-state.md`.
+
+**Scope:** SKILL.md changes from Task 10 of `docs/superpowers/plans/2026-05-05-events-jsonl.md`.
+
+### Verified
+
+- 16 `bash $LOG` call sites land at the expected phase transitions:
+  - PREFLIGHT entry: `run_started`
+  - AUDIT: `phase_start` / `audit_completed` / `phase_end`
+  - PRIORITIZE: `phase_start` / `phase_end`
+  - APPLY: `phase_start` / `category_applied` / `phase_end` / `iteration_completed` (when no VERIFY)
+  - VERIFY: `phase_start` / `verify_completed` / `plateau_check` / `phase_end` / `iteration_completed` (Continue) / `run_halted` (Halt)
+- `Event Logging` reference section explains the `$LOG` alias and points to the design spec.
+- 4 unit tests in `tests/log_event.test.sh` all pass: `test_simple_event`, `test_dotted_key_nesting`, `test_value_coercion`, `test_append_only`.
+
+### Smoke test (Task 13)
+
+Run `/improve --audit` against `skills/code-improver/tests/fixtures/fixture-clean` and confirm:
+
+- `events.jsonl` is created in the fixture's `docs/code-improvement/<today>/`.
+- File contains at minimum `run_started`, `phase_start(AUDIT)`, `audit_completed`, `phase_end(AUDIT)` (4 lines for an audit-only run).
+- Each line is independently valid JSON: `jq -s 'length' events.jsonl` equals the line count.
