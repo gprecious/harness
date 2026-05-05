@@ -57,7 +57,7 @@ for kv in "$@"; do
   esac
   # Build a setpath() expression so dotted keys nest:
   #   "verification.tests" -> setpath(["verification","tests"]; $v1)
-  path_json=$(printf '%s' "$k" | jq -Rcn 'inputs | split(".")' <<< "$k")
+  path_json=$(jq -Rc 'split(".")' <<< "$k")
   filter="$filter | setpath($path_json; \$$var)"
 done
 

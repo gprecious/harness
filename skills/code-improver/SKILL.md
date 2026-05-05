@@ -249,7 +249,9 @@ If the agent reports a fatal error (missing catalog/matrix/template), abort with
 
 After the agent returns successfully, log:
 
-    bash $LOG audit_completed iteration=<N> total_issues=<T> by_priority.P1=<n1> by_priority.P2=<n2> by_priority.P3=<n3> by_priority.P4=<n4> by_priority.P5=<n5>
+    bash $LOG audit_completed iteration=<N> total_issues=<T> by_priority.P1=<n1> by_priority.P2=<n2> by_priority.P3=<n3> by_priority.P4=<n4> by_priority.P5=<n5> by_category.<cat1>=<n_cat1> by_category.<cat2>=<n_cat2> ...
+
+(Append one `by_category.<name>=<count>` arg for each category that the audit-report reports a non-zero count for. The dotted-key helper nests them under a single `by_category` object.)
 
 ### Step 1.4: Stitch audit into `iteration-N.md`
 
@@ -478,6 +480,10 @@ Per `references/plateau-detection.md`:
 Log phase boundary:
 
     bash $LOG phase_end iteration=<N> phase=VERIFY status=ok
+
+If plateau was NOT confirmed (i.e., `consecutive_plateau_iterations < 2` and Step 4.4 will not run), also log:
+
+    bash $LOG iteration_completed iteration=<N> status=completed
 
 ### Step 4.4: On plateau, present the 4-option menu
 
