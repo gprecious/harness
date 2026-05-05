@@ -41,4 +41,20 @@ test_simple_event() {
 
 test_simple_event
 
+# --- Test 2: dotted keys nest into objects ---
+test_dotted_key_nesting() {
+  setup
+  bash "$SCRIPT" category_applied iteration=2 verification.tests=true verification.lint=false
+  EVENTS="$TMP/docs/code-improvement/2026-05-05/events.jsonl"
+  jq -e . "$EVENTS" >/dev/null || fail "line is not valid JSON"
+  T=$(jq -r .verification.tests "$EVENTS")
+  L=$(jq -r .verification.lint "$EVENTS")
+  [ "$T" = "true" ] || fail "verification.tests=$T, want true"
+  [ "$L" = "false" ] || fail "verification.lint=$L, want false"
+  ok "test_dotted_key_nesting"
+  teardown
+}
+
+test_dotted_key_nesting
+
 echo "ALL TESTS PASSED"
