@@ -2,6 +2,17 @@
 
 All notable changes to harness will be documented in this file.
 
+## [0.4.0] - 2026-05-05
+
+### Added
+- **`events.jsonl`**: append-only structured event log under `docs/code-improvement/<date>/events.jsonl` for every `/improve` run. 9 event types: `run_started`, `phase_start`, `phase_end`, `audit_completed`, `category_applied`, `verify_completed`, `plateau_check`, `iteration_completed`, `run_halted`.
+- `skills/code-improver/scripts/log_event.sh`: single-writer helper used by SKILL.md at every phase boundary (16 call sites). Auto-discovers run dir from `docs/code-improvement/*/code-improver-state.md`, auto-injects `ts`, supports dotted-key nesting and JSON value coercion.
+- `skills/code-improver/tests/log_event.test.sh`: 4 unit tests (simple event, dotted-key nesting, value type coercion, append-only durability).
+
+### Changed
+- `references/plateau-detection.md`: now reads `plateau_check` events from `events.jsonl` first, with markdown parsing as fallback for older runs.
+- `templates/code-improver-state.md`: frontmatter gains `events_log: events.jsonl` pointer.
+
 ## [0.3.0] - 2026-04-16
 
 ### Added
