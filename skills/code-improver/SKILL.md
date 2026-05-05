@@ -11,6 +11,16 @@ tools: Read, Write, Edit, Bash, Grep, Glob, Agent, WebFetch, TodoWrite
 
 An independent, iterative codebase improvement orchestrator. On `/improve --init`, it detects the project's language, frameworks, tooling, and conventions, then runs thorough web research to produce 5 project-specific reference documents. On subsequent `/improve` runs it executes a 4-phase loop — AUDIT (codebase-auditor subagent scans 9 categories) → PRIORITIZE (Priority 1-2 auto-fix vs Priority 3-5 suggestion) → APPLY (improvement-applier subagent per category, then pr-creator subagent opens category-split PRs) → VERIFY (re-audit and plateau detection). Every decision is persisted to disk (`code-improver-state.md` + `iteration-N.md`) so any interruption is safely resumable via `/improve --resume`. This skill is **independent of `harness-orchestrator`**: it does not dispatch `/feature`, it is not dispatched by `/feature`, and it can be installed and used in isolation. Its ethos is report-first, safe-only-automation, and plateau-aware termination.
 
+## Event Logging
+
+Every phase boundary and significant result is logged to `docs/code-improvement/<date>/events.jsonl` via the helper script:
+
+    bash "${CLAUDE_PLUGIN_ROOT}/skills/code-improver/scripts/log_event.sh" <event_type> [key=value ...]
+
+The skill below uses the alias `$LOG` for that path. The helper auto-discovers the run dir from `docs/code-improvement/*/code-improver-state.md`, auto-injects `ts`, and treats the first positional arg as `type`. Failures are non-blocking (event-log loss is not critical).
+
+Event catalog (9 types) is documented in `docs/superpowers/specs/2026-05-05-events-jsonl-design.md`.
+
 ## When to Use
 
 - Existing codebase feels messy or bloated
@@ -42,6 +52,12 @@ Argument parsing is left-to-right; the first recognized mode flag wins. `--categ
 ## Phase 0: PREFLIGHT
 
 Runs before every command (except the first-ever `--init` invocation, which has no state file yet).
+
+Immediately at command entry — once the state file exists (skip on first `--init`) — log:
+
+    bash $LOG run_started mode=<MODE> harness_version=<VER>
+
+where `<MODE>` is the parsed command mode (`full`, `audit`, `apply`, `verify`, `init`, `init-refresh`, `resume`, or `category`) and `<VER>` comes from `.claude-plugin/plugin.json`'s `version` field.
 
 ### Step 0.1: Load state
 
@@ -203,7 +219,9 @@ If `--init --refresh` is invoked and state already exists:
 Read state → `current_iteration`. For a new audit started by `/improve` or `/improve --audit`:
 
 - `N = current_iteration + 1`
-- Set `current_phase = AUDIT` and persist.
+- Set `current_phase = AUDIT` and persist. Then log:
+
+      bash $LOG phase_start iteration=<N> phase=AUDIT
 
 For `--resume` entering AUDIT: re-use the same `N` (audit is idempotent).
 
@@ -229,6 +247,12 @@ Wait for the agent to complete. It returns the absolute path to the written audi
 
 If the agent reports a fatal error (missing catalog/matrix/template), abort with the agent's error message.
 
+After the agent returns successfully, log:
+
+    bash $LOG audit_completed iteration=<N> total_issues=<T> by_priority.P1=<n1> by_priority.P2=<n2> by_priority.P3=<n3> by_priority.P4=<n4> by_priority.P5=<n5> by_category.<cat1>=<n_cat1> by_category.<cat2>=<n_cat2> ...
+
+(Append one `by_category.<name>=<count>` arg for each category that the audit-report reports a non-zero count for. The dotted-key helper nests them under a single `by_category` object.)
+
 ### Step 1.4: Stitch audit into `iteration-N.md`
 
 Read the audit-report. Create (or update, on `--resume`) `docs/code-improvement/<today>/iteration-N.md` by filling `templates/iteration.md`:
@@ -245,7 +269,15 @@ Read the audit-report. Create (or update, on `--resume`) `docs/code-improvement/
 
 Update state: `current_phase = AUDIT → PRIORITIZE`, persist.
 
+Log phase boundary:
+
+    bash $LOG phase_end iteration=<N> phase=AUDIT status=ok
+
 ## Phase 2: PRIORITIZE
+
+At entry log:
+
+    bash $LOG phase_start iteration=<N> phase=PRIORITIZE
 
 ### Step 2.1: Classify
 
@@ -297,7 +329,15 @@ If `/improve --audit` was invoked, **skip this prompt entirely** — just finali
 
 Update state: `current_phase = PRIORITIZE → APPLY` (if proceeding) or `idle` (if skipping).
 
+Log phase boundary:
+
+    bash $LOG phase_end iteration=<N> phase=PRIORITIZE status=ok
+
 ## Phase 3: APPLY
+
+At entry log:
+
+    bash $LOG phase_start iteration=<N> phase=APPLY
 
 Iterate over approved categories in **alphabetical order** for determinism. For each category:
 
@@ -366,6 +406,12 @@ Append to the "Auto-Fixes Applied (by category → PR)" section, using the templ
 
 If the category was skipped (applier failure + no branch), under "Auto-Fixes Applied" write a single bullet: `- <category>: skipped (see Failure Log)`.
 
+Log per-category result:
+
+    bash $LOG category_applied iteration=<N> category=<C> pr_url=<URL_OR_null> files_changed=<F> lines_added=<A> lines_removed=<R> verification.tests=<true|false> verification.lint=<true|false> verification.typecheck=<true|false>
+
+(Use the literal string `null` for `pr_url` when running in `local-only` mode.)
+
 ### Step 3.4: Update state
 
 - Append a metrics snapshot to `metrics_history` (format per `templates/code-improver-state.md`): one entry per completed iteration, keyed `iteration_N`, containing the values from the audit's Metrics Snapshot.
@@ -373,9 +419,21 @@ If the category was skipped (applier failure + no branch), under "Auto-Fixes App
 - When all approved categories have been processed, set `current_phase = idle` (unless the invocation was `/improve` and the user asked to run VERIFY immediately, in which case set `current_phase = VERIFY`).
 - Finalize iteration-N.md: `status: completed`, `completed_at: <ISO-8601 UTC>`.
 
+Log phase boundary:
+
+    bash $LOG phase_end iteration=<N> phase=APPLY status=ok
+
+If no VERIFY will run after APPLY (i.e., `current_phase` was set to `idle`), also log:
+
+    bash $LOG iteration_completed iteration=<N> status=completed
+
 ## Phase 4: VERIFY (Optional)
 
 Triggered by `/improve --verify`, or automatically if the user explicitly requests verification immediately after PR merges.
+
+At entry log:
+
+    bash $LOG phase_start iteration=<N> phase=VERIFY
 
 ### Step 4.1: Re-dispatch `codebase-auditor`
 
@@ -405,6 +463,12 @@ Write the Plateau Check section of iteration-N.md:
 - Plateau confirmed: yes | no
 ```
 
+Log verify result and plateau check:
+
+    bash $LOG verify_completed iteration=<N> metrics_after.cognitive_complexity=<v> metrics_after.dead_code=<v> metrics_after.unused_imports=<v> metrics_after.test_coverage=<v> metrics_after.files_over_300_lines=<v> metrics_after.solid_violations=<v>
+
+    bash $LOG plateau_check iteration=<N> resolved=<X> new=<Y> ratio=<R> consecutive=<K>
+
 ### Step 4.3: Apply plateau detection
 
 Per `references/plateau-detection.md`:
@@ -412,6 +476,14 @@ Per `references/plateau-detection.md`:
 - If `ratio >= 0.80`: increment `consecutive_plateau_iterations` in state.
 - Otherwise: reset `consecutive_plateau_iterations = 0`.
 - If `consecutive_plateau_iterations >= 2`: plateau confirmed.
+
+Log phase boundary:
+
+    bash $LOG phase_end iteration=<N> phase=VERIFY status=ok
+
+If plateau was NOT confirmed (i.e., `consecutive_plateau_iterations < 2` and Step 4.4 will not run), also log:
+
+    bash $LOG iteration_completed iteration=<N> status=completed
 
 ### Step 4.4: On plateau, present the 4-option menu
 
@@ -436,6 +508,16 @@ Default action is (1) Halt. On Halt, generate `docs/code-improvement/<today>/sum
 - Deferred items (Priority 3-5 accumulated across iterations, with a migration note to a suitable tracker)
 
 Set iteration-N.md's `status: plateau` and state's `current_phase = idle`.
+
+If the user chose Halt (option 1, default), log:
+
+    bash $LOG run_halted reason=plateau final_iteration=<N>
+
+If the user chose Continue (option 2), log:
+
+    bash $LOG iteration_completed iteration=<N> status=plateau
+
+(For Refresh/Reduce-scope choices, no event is emitted here — the next `/improve` invocation logs `run_started` afresh.)
 
 ## Phase 5: RESUME (for `--resume`)
 

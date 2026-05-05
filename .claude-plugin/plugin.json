@@ -1,6 +1,6 @@
 {
   "name": "harness",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Claude Code plugin for feature development (/feature: TDD Generator-Evaluator with Plan-Contract-Test-Build-Evaluate-Integrate-Learn cycle and prior art research) and codebase improvement (/improve: iterative audit → Priority 1-2 auto-fix via category-split PRs → plateau detection).",
   "author": {
     "name": "taejin"

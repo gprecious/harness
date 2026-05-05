@@ -5,6 +5,7 @@ last_refreshed_at: {{ISO_8601_TIMESTAMP}}
 current_iteration: {{N}}
 current_phase: {{idle | PREFLIGHT | AUDIT | PRIORITIZE | APPLY | VERIFY}}
 harness_version: {{semver}}
+events_log: events.jsonl
 ---
 
 # Code Improver State
