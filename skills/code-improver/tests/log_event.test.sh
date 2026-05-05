@@ -57,4 +57,43 @@ test_dotted_key_nesting() {
 
 test_dotted_key_nesting
 
+# --- Test 3: value type coercion (bool/int/float/string) ---
+test_value_coercion() {
+  setup
+  bash "$SCRIPT" audit_completed iteration=3 total_issues=42 ratio=0.36 active=true name=hello
+  EVENTS="$TMP/docs/code-improvement/2026-05-05/events.jsonl"
+  jq -e . "$EVENTS" >/dev/null || fail "line is not valid JSON"
+  # Use jq's `type` filter to assert each value is the right JSON type.
+  [ "$(jq -r '.iteration | type' "$EVENTS")" = "number" ] || fail "iteration not number"
+  [ "$(jq -r '.total_issues | type' "$EVENTS")" = "number" ] || fail "total_issues not number"
+  [ "$(jq -r '.ratio | type' "$EVENTS")" = "number" ] || fail "ratio not number"
+  [ "$(jq -r '.active | type' "$EVENTS")" = "boolean" ] || fail "active not boolean"
+  [ "$(jq -r '.name | type' "$EVENTS")" = "string" ] || fail "name not string"
+  [ "$(jq -r '.ratio' "$EVENTS")" = "0.36" ] || fail "ratio value"
+  ok "test_value_coercion"
+  teardown
+}
+
+test_value_coercion
+
+# --- Test 4: append-only — second call adds a line, first line unchanged ---
+test_append_only() {
+  setup
+  bash "$SCRIPT" phase_start iteration=1 phase=AUDIT
+  EVENTS="$TMP/docs/code-improvement/2026-05-05/events.jsonl"
+  FIRST_LINE=$(head -1 "$EVENTS")
+  bash "$SCRIPT" phase_end iteration=1 phase=AUDIT status=ok
+  LINES=$(wc -l < "$EVENTS")
+  [ "$LINES" -eq 2 ] || fail "expected 2 lines, got $LINES"
+  [ "$(head -1 "$EVENTS")" = "$FIRST_LINE" ] || fail "first line mutated by second call"
+  jq -e . "$EVENTS" >/dev/null || fail "second line invalid JSON (or jq treats file as one obj)"
+  # Verify both are independently parseable as a JSON array via jq -s
+  COUNT=$(jq -s 'length' "$EVENTS")
+  [ "$COUNT" = "2" ] || fail "jq -s reports $COUNT objects, want 2"
+  ok "test_append_only"
+  teardown
+}
+
+test_append_only
+
 echo "ALL TESTS PASSED"
