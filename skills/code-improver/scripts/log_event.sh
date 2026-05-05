@@ -33,16 +33,32 @@ run_dir=$(dirname "$state_file")
 ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 # Build the JSON object: start with {ts, type}, then merge each key=value.
+# - Dotted keys (a.b.c) become nested objects via setpath.
+# - Values that look like booleans, integers, or floats are coerced to JSON
+#   primitives via --argjson; everything else is a string via --arg.
 jq_args=(--arg ts "$ts" --arg type "$type_arg")
 filter='{ts:$ts, type:$type}'
+i=0
 for kv in "$@"; do
   k="${kv%%=*}"
   v="${kv#*=}"
-  # Sanitize key for jq variable name (only alphanum + underscore).
-  safe_k=$(printf '%s' "$k" | tr -c 'A-Za-z0-9_' '_')
-  jq_args+=(--arg "v_$safe_k" "$v")
-  # Use setpath so dotted keys nest correctly later (Task 5 will extend this).
-  filter="$filter | .[\"$k\"] = \$v_$safe_k"
+  i=$((i+1))
+  var="v$i"
+  # Coerce value type for the JSON primitive case.
+  case "$v" in
+    true|false)                            jq_args+=(--argjson "$var" "$v") ;;
+    -[0-9]*|[0-9]*)
+      if printf '%s' "$v" | grep -qE '^-?[0-9]+(\.[0-9]+)?$'; then
+        jq_args+=(--argjson "$var" "$v")
+      else
+        jq_args+=(--arg "$var" "$v")
+      fi ;;
+    *)                                     jq_args+=(--arg "$var" "$v") ;;
+  esac
+  # Build a setpath() expression so dotted keys nest:
+  #   "verification.tests" -> setpath(["verification","tests"]; $v1)
+  path_json=$(printf '%s' "$k" | jq -Rcn 'inputs | split(".")' <<< "$k")
+  filter="$filter | setpath($path_json; \$$var)"
 done
 
 jq -cn "${jq_args[@]}" "$filter" >> "$run_dir/events.jsonl"
