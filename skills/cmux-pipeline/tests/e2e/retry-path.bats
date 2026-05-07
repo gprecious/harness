@@ -85,3 +85,41 @@ teardown() {
   phase_status=$(jq -r .status ".pipeline/runs/$RUN_ID/phases/01-step/status.json")
   [ "$phase_status" = "failed" ]
 }
+
+# --- isolated workspace honored from manifest -------------------------------
+# Pin: when manifest.options.workspace_id is set and CMUX_WORKSPACE_ID is NOT
+# pre-exported by the caller, stage-loop must still create the retry pane in
+# the manifest-recorded workspace (not the user's currently-focused one).
+# This is the contract the workspace-create.sh primitive promises.
+@test "E2E retry: manifest.options.workspace_id alone routes retry pane" {
+  # Record the workspace into the manifest options.
+  "$ROOT/scripts/manifest.sh" update "$RUN_ID" \
+    ".options.workspace_id = \"$WORKSPACE\""
+
+  # Capture the workspace pane count before invoking stage-loop. Setup created
+  # exactly one pane ($PANE); after the first FAILED attempt stage-loop will
+  # close it and create a fresh retry pane in the same workspace, so the post
+  # count must be >= 1 (timing-dependent: close vs create may race).
+  pane_count_before=$(cmux list-panes --workspace "$WORKSPACE" 2>/dev/null \
+                       | grep -cE 'pane:[0-9]+' || echo 0)
+  [ "$pane_count_before" -ge 1 ]
+
+  # Critical: unset CMUX_WORKSPACE_ID so the only signal stage-loop has is
+  # the manifest. If stage-loop ignores the manifest, the retry pane lands in
+  # the focused workspace and our --workspace-scoped grep below will fail.
+  unset CMUX_WORKSPACE_ID
+
+  PHASE_TIMEOUT=8 run "$ROOT/scripts/stage-loop.sh" "$RUN_ID" "$PANE"
+  [ "$status" -eq 2 ]
+
+  # The manifest should now record a *new* worker_pane_id (the retry pane),
+  # different from the original $PANE. Both panes belong to $WORKSPACE.
+  retry_pane=$("$ROOT/scripts/manifest.sh" read "$RUN_ID" \
+                 '.stages.loop.worker_pane_id')
+  [ -n "$retry_pane" ]
+  [ "$retry_pane" != "$PANE" ]
+
+  # The retry pane must be visible in $WORKSPACE.
+  cmux list-panes --workspace "$WORKSPACE" 2>/dev/null \
+    | grep -qF "$retry_pane"
+}

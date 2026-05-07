@@ -52,6 +52,16 @@ RUN_MODEL=$("$MANIFEST" read "$RUN_ID" '.options.model // empty' 2>/dev/null || 
 RUN_SANDBOX=$("$MANIFEST" read "$RUN_ID" '.options.sandbox // empty' 2>/dev/null || echo "")
 [ "$RUN_SANDBOX" = "null" ] && RUN_SANDBOX=""
 
+# Honor manifest.options.workspace_id so retry pane creation lands in the same
+# isolated workspace the orchestrator created. Without this, a fresh pane on
+# retry would default to the user's currently-focused cmux workspace and
+# clutter their view — the bug the workspace-create.sh primitive was added to
+# prevent. Caller may also pre-export CMUX_WORKSPACE_ID; manifest wins so the
+# pipeline state is the single source of truth.
+RUN_WORKSPACE=$("$MANIFEST" read "$RUN_ID" '.options.workspace_id // empty' 2>/dev/null || echo "")
+[ "$RUN_WORKSPACE" = "null" ] && RUN_WORKSPACE=""
+[ -n "$RUN_WORKSPACE" ] && export CMUX_WORKSPACE_ID="$RUN_WORKSPACE"
+
 codex_launch_args=()
 [ -n "$RUN_MODEL" ]   && codex_launch_args+=( --model "$RUN_MODEL" )
 [ -n "$RUN_SANDBOX" ] && codex_launch_args+=( --sandbox "$RUN_SANDBOX" )
