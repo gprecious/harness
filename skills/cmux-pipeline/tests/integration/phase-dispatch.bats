@@ -33,6 +33,8 @@ EOF
   # shellcheck disable=SC1091
   source "$BATS_TEST_DIRNAME/../../scripts/lib/resolve-surface.sh"
   SURFACE=$(resolve_surface "$PANE")
+  # Cleanup on abort / Ctrl+C / SIGTERM (bats teardown is skipped on signals).
+  trap teardown EXIT INT TERM
 }
 
 teardown() {
@@ -102,4 +104,37 @@ prime_pane_sentinel() {
   # Pane is just an idle shell — no sentinel will appear within 3s
   run "$DISPATCH" --pane "$PANE" --run-id "$RUN_ID" --phase-id "$PHASE" --timeout 3 --poll 1
   [ "$status" -eq 124 ]
+}
+
+# --- --mode flag (added 2026-05-07 after multi-line fragmentation bug) ------
+
+@test "phase-dispatch: default mode sends single-line file reference" {
+  prime_pane_sentinel "SUCCESS"
+  run "$DISPATCH" --pane "$PANE" --run-id "$RUN_ID" --phase-id "$PHASE" \
+    --timeout 30 --poll 1
+  [ "$status" -eq 0 ]
+  [ "$output" = "SUCCESS" ]
+  # Read pane scrollback — the typed message should reference the prompt file
+  # path, NOT the prompt body itself.
+  pane_text=$(cmux read-screen --surface "$SURFACE" --lines 40)
+  [[ "$pane_text" == *"Read the file at"* ]]
+  [[ "$pane_text" == *"prompt.md"* ]]
+}
+
+@test "phase-dispatch: --mode raw sends prompt body" {
+  prime_pane_sentinel "SUCCESS"
+  run "$DISPATCH" --pane "$PANE" --run-id "$RUN_ID" --phase-id "$PHASE" \
+    --timeout 30 --poll 1 --mode raw
+  [ "$status" -eq 0 ]
+  [ "$output" = "SUCCESS" ]
+  # Pane should contain literal text from the prompt body, not "Read the file".
+  pane_text=$(cmux read-screen --surface "$SURFACE" --lines 40)
+  [[ "$pane_text" == *"Test prompt body"* ]]
+}
+
+@test "phase-dispatch: --mode rejects unknown value" {
+  run "$DISPATCH" --pane "$PANE" --run-id "$RUN_ID" --phase-id "$PHASE" \
+    --mode bogus
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"--mode"* ]]
 }

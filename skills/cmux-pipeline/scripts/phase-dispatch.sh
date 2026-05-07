@@ -3,15 +3,30 @@
 #
 # Thin orchestrator over pane-send.sh + pane-wait.sh:
 #   1. Read prompt from .pipeline/runs/<run-id>/phases/<phase-id>/prompt.md
-#   2. Send via pane-send.sh
+#   2. Send to codex via single-line file-reference message (default) or
+#      raw multi-line text (--mode=raw, deprecated).
 #   3. Poll for sentinel via pane-wait.sh
 #   4. Echo sentinel status (SUCCESS/NEEDS_HELP/FAILED) on stdout
 #
 # Sentinel format: ==DONE==<run-id>==phase-<phase-id>==<status>==
 #
+# Send modes (--mode):
+#   file (default)
+#     Send a single-line prompt: "Read the file at <abs-path> and follow
+#     ALL instructions inside it." This bypasses cmux's `\n` → Enter
+#     conversion that fragments multi-line prompts into separate codex
+#     messages. The prompt body is on disk; codex reads it via its file
+#     tools. Discovered necessary in the first sandbox verification
+#     (run-id 20260507-0806-routine-tracker) where the raw mode caused
+#     codex to start work on the first line and queue the rest.
+#   raw
+#     Send the full prompt body via pane-send.sh. cmux interprets each
+#     newline as Enter, so codex receives each line as its own message.
+#     Kept for backward-compat / debugging. Avoid for normal use.
+#
 # Usage:
 #   phase-dispatch.sh --pane <ref> --run-id <id> --phase-id <id>
-#                     [--timeout <sec>] [--poll <sec>]
+#                     [--timeout <sec>] [--poll <sec>] [--mode file|raw]
 #
 # Output: SUCCESS | NEEDS_HELP | FAILED on stdout when detected.
 # Exit codes:
@@ -37,6 +52,7 @@ Required:
 Options:
   --timeout <seconds>              Max wait time (default: 1200)
   --poll <seconds>                 Poll interval (default: 5)
+  --mode file|raw                  Prompt send mode (default: file)
   --help, -h                       Show this help and exit 0
 
 Reads:  $PIPELINE_ROOT/<run-id>/phases/<phase-id>/prompt.md
@@ -52,6 +68,7 @@ RUN_ID=""
 PHASE_ID=""
 TIMEOUT=1200
 POLL=5
+MODE="file"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -74,6 +91,14 @@ while [ $# -gt 0 ]; do
     --poll)
       [ $# -ge 2 ] || { echo "phase-dispatch: --poll requires a value" >&2; exit 2; }
       POLL="$2"; shift 2
+      ;;
+    --mode)
+      [ $# -ge 2 ] || { echo "phase-dispatch: --mode requires a value" >&2; exit 2; }
+      MODE="$2"; shift 2
+      case "$MODE" in
+        file|raw) ;;
+        *) echo "phase-dispatch: --mode must be 'file' or 'raw' (got: $MODE)" >&2; exit 2 ;;
+      esac
       ;;
     --help|-h)
       usage; exit 0
@@ -103,14 +128,26 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 SEND="$SCRIPT_DIR/pane-send.sh"
 WAIT="$SCRIPT_DIR/pane-wait.sh"
 
-# Read prompt body once (preserves embedded newlines via command substitution
-# stripping only the trailing newline, which pane-send handles correctly).
-prompt_text=$(cat "$PROMPT_FILE")
+# Convert prompt path to absolute so codex (which sets its own cwd) can find it.
+ABS_PROMPT_FILE=$(cd "$(dirname "$PROMPT_FILE")" && pwd)/$(basename "$PROMPT_FILE")
 
-# Send the prompt to the pane. Errors are surfaced by pane-send.sh on stderr.
-if ! "$SEND" --pane "$PANE" --text "$prompt_text"; then
-  echo "phase-dispatch: pane-send failed" >&2
-  exit 1
+if [ "$MODE" = "file" ]; then
+  # File-reference mode (default). Single-line message → no fragmentation.
+  # Codex reads the file via its built-in file tool. Sentinel format and
+  # all behavioral instructions live inside the file.
+  msg="Read the file at ${ABS_PROMPT_FILE} and follow ALL instructions inside it. Do not stop until you emit the sentinel marker described in that file."
+  if ! "$SEND" --pane "$PANE" --text "$msg"; then
+    echo "phase-dispatch: pane-send failed" >&2
+    exit 1
+  fi
+else
+  # Raw mode (legacy). cmux interprets each \n as Enter so codex sees each
+  # line as a separate message. Kept for debugging / explicit opt-in.
+  prompt_text=$(cat "$PROMPT_FILE")
+  if ! "$SEND" --pane "$PANE" --text "$prompt_text"; then
+    echo "phase-dispatch: pane-send failed" >&2
+    exit 1
+  fi
 fi
 
 # Wait for the sentinel; pane-wait echoes status on stdout and propagates
