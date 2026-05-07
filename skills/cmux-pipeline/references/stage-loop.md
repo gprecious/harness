@@ -49,6 +49,17 @@
 | `PHASE_TIMEOUT` | `1200` | 한 phase 의 dispatch 대기 한도 (sec) |
 | `COMPACT_THRESHOLD` | `218000` | `context_estimate_tokens` 가 이 값 초과 시 `/compact` |
 | `PIPELINE_ROOT` | `.pipeline/runs` | 파이프라인 루트 |
+| `CMUX_WORKSPACE_ID` | (자동) | `manifest.options.workspace_id` 가 있으면 stage-loop 가 자동 export. 호출자가 미리 set 하지 않아도 retry pane 이 isolated workspace 에 생성됨. |
+
+## manifest options
+
+orch 가 `stages.loop.status = "running"` 직전 `manifest.options.*` 에 기록 가능한 옵션:
+
+| 키 | 타입 | 기본 | 의미 |
+|---|---|---|---|
+| `model` | string | (codex 기본) | retry 시 codex-launch 에 `--model <value>` 전달 |
+| `sandbox` | string | (codex 기본) | retry 시 codex-launch 에 `--sandbox <value>` 전달 |
+| `workspace_id` | string | (현 focused) | stage-loop 가 `CMUX_WORKSPACE_ID` export. retry pane 이 사용자 active workspace 가 아닌 isolated workspace 에 생성됨. orch 는 시작 시 `bash scripts/workspace-create.sh` 로 만든 ref 를 여기 기록하고, 종료 시 `workspace-close.sh` 로 정리해야 한다. |
 
 ## 다음 단계
 

@@ -2,6 +2,15 @@
 
 All notable changes to harness will be documented in this file.
 
+## [0.5.1] - 2026-05-07
+
+### Changed
+- **cmux-pipeline / stage-loop**: `manifest.options.workspace_id` 옵션 추가
+  - stage-loop 가 시작 시 manifest 에서 읽어 `CMUX_WORKSPACE_ID` 자동 export
+  - 호출자가 env var 를 미리 set 하지 않아도 retry pane 이 isolated workspace 에 생성됨
+  - `manifest.options.{model,sandbox,workspace_id}` 통합 문서화 (`references/stage-loop.md`)
+  - 신규 e2e 회귀 테스트: env var 없이 manifest 만으로 retry pane 라우팅 검증
+
 ## [0.5.0] - 2026-05-07
 
 ### Added
