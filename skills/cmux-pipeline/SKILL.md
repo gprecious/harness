@@ -61,3 +61,42 @@ Don't use:
 - claude plugin: gstack, gsd, build-loop, superpowers, ralph-loop
 
 자세한 내부 구조는 `references/` 참조.
+
+## Orchestration Workflow
+
+`/build` 가 호출되면 claude orchestrator는 다음 절차를 따른다.
+
+### 1. 입력 파싱
+- 첫 인자: topic (또는 `--resume <run-id>`, `--status`, `--list`, `--gc`)
+- options 추출
+
+### 2. Sub-command 분기
+- `--list` → `bash skills/cmux-pipeline/scripts/build-list.sh`
+- `--status` → `bash skills/cmux-pipeline/scripts/build-status.sh [<run-id>]`
+- `--gc` → `bash skills/cmux-pipeline/scripts/build-gc.sh [<days>]`
+- `--resume <run-id>` → see Resume workflow (`references/resume.md`)
+- 그 외 → 새 run 시작
+
+### 3. 새 run 시작
+1. preflight: `bash skills/cmux-pipeline/scripts/preflight.sh`
+2. run-id 생성: `RUN_ID=$(bash .../scripts/manifest.sh gen-run-id "<topic>")`
+3. manifest init: `bash .../scripts/manifest.sh init "$RUN_ID" "<topic>"`
+4. options 적용: `bash .../scripts/manifest.sh update "$RUN_ID" '<jq expr>'`
+5. feature branch 생성: `git checkout -b feat/<topic-slug>`
+6. greenfield 모드 결정 (자동 detect → confirm)
+
+### 4. Stage 진행
+- Stage 1: `references/stage-spec.md`
+- Stage 2: `references/stage-decompose.md`
+- Stage 3: `references/stage-loop.md`
+- Stage 4: `references/stage-integrate.md`
+
+각 stage 끝에 checkpoint가 활성화되어 있으면 `▶ Stage N 완료` + resume 안내 출력하고 종료.
+
+### 5. Failure 처리
+- `references/failure-handling.md` 참조
+
+### 6. 출력 디자인
+- 명확한 진행 1줄/이벤트 (▶ Stage N/4, [phase X/Y] ✓ Ms)
+- Quiet by default — codex 출력 표시 X. log 위치만 안내.
+- `--verbose` 시 codex pane scrollback tail
