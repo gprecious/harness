@@ -3,7 +3,7 @@
 **codex 버전**: `codex-cli 0.128.0` (`@openai/codex@0.128.0`, native binary `codex-darwin-arm64`)
 **검증 일자**: 2026-05-07
 **검증 환경**: macOS Darwin 25.3, Node v24.12.0, zsh
-**바이너리 경로**: `/Users/taejin/.nvm/versions/node/v24.12.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex/codex` (Node shim → 네이티브 Rust binary)
+**설치 경로**: nvm-managed Node 24, 패키지 `@openai/codex@0.128.0` (Node shim → 네이티브 Rust binary `@openai/codex-darwin-arm64`)
 
 ## --help 캡처 요약
 
@@ -69,12 +69,11 @@ codex \
 | 모델 지정 | `--model <name>` | **`-m, --model <MODEL>`** (긴 이름 그대로 존재) | YES | 가정 일치. `-m` 단축형도 가능. |
 | MCP 비활성 | `--no-mcp` | **존재하지 않음.** 대안: `-c mcp_servers={}` (TOML 빈 테이블로 override) 또는 `--ignore-user-config` (`exec` 전용) | YES (부재 확인) | 디자인 수정 필요. interactive 모드에서는 `--ignore-user-config` 가 없으므로 `-c mcp_servers={}` 사용. **단**: `-c` 인자는 TOML 파싱 — 빈 테이블 표기 정확도 한 번 더 실측 검증 권장 (Task 13 구현 시). 차선책: `~/.codex/config.toml` 의 `[mcp_servers.*]` 섹션을 사용자 안내로 임시 비활성화. |
 | 자동 승인 | `--auto-approve` | **존재하지 않음.** 가장 가까운 등가: `-a never` (= `--ask-for-approval never`). 더 강한 `--dangerously-bypass-approvals-and-sandbox` 도 있으나 위험. | YES (부재 확인) | 디자인 수정 필요. 권장 조합: **`-a never -s workspace-write`** (승인 안 묻고, 워크스페이스 내 쓰기 허용, 네트워크/시스템 쓰기는 샌드박스로 차단). 디자인 R5 ("의도치 않은 실행 위험") 와 정합 — sandbox 가 안전망. **`--dangerously-bypass-approvals-and-sandbox` 는 사용 금지** (cmux pane 은 외부 sandbox 가 아니므로 위험). |
-| 추론 강도 | `--reasoning high` | **flag 형태 존재하지 않음.** 대안: `-c model_reasoning_effort="high"` (config 키 override). 가능 값은 `low` / `medium` / `high` / `xhigh` (binary strings 에서 확인). default 는 모델별로 `defaultReasoningEffort` 가 결정. | YES (대안 확인) | 디자인 수정 필요. plan-mode 용으로는 `plan_mode_reasoning_effort` 키도 별도 존재. |
+| 추론 강도 | `--reasoning high` | **flag 형태 존재하지 않음.** 대안: `-c model_reasoning_effort="high"` (config 키 override). 가능 값 (실측): `none` / `minimal` / `low` / `medium` / `high` / `xhigh` — `codex exec -c 'model_reasoning_effort="bogus"'` 의 에러 메시지가 enum 전체를 노출하며, `xhigh` 는 `codex exec` 가 실제로 받아들이고 startup 배너에 `reasoning effort: xhigh` 로 표기됨을 확인. default 는 모델별로 `defaultReasoningEffort` 가 결정. | YES (실측됨) | 디자인 수정 필요. plan-mode 용으로는 `plan_mode_reasoning_effort` 키도 별도 존재. |
 | 작업 디렉토리 | `--cd <path>` | **`-C, --cd <DIR>`** (긴 이름 그대로 존재, 단축은 `-C`) | YES | 가정 일치. |
 
 추가 권장 flag (디자인이 명시 안 했지만 cmux 환경에서 필요):
 - `--no-alt-screen` — cmux pane 은 zellij/tmux 와 비슷하게 멀티플렉서 환경. alt-screen 모드에서 스크롤백을 잃을 수 있음. **cmux pane 안에서는 켜는 것을 강력 권장**.
-- `--skip-git-repo-check` — `exec` 에만 있음. interactive 모드는 git repo 체크가 다른 경로로 동작하므로 필요시 후속 검증.
 
 ## /compact 동작 검증
 
@@ -99,7 +98,7 @@ codex \
 ### 미확인 / 위험 항목 (verified=PARTIAL)
 
 - **confirmation prompt 의 정확한 형태와 키 입력**. 문서는 "confirm" 만 명시. cmux pane 에 `/compact\n` 보낸 뒤 어떤 prompt 가 뜨고 어떤 키 (`y` / Enter / 화살표+Enter) 로 확정되는지는 실제 TTY 세션에서 확인 필요. 자동화 시 prompt 인식 로직이 필요할 수도.
-- compact 진행 중 `thread/compacted` 알림이 onset 인지 완료인지 — binary strings 만으로는 단정 어려움. pane 출력에서 완료 신호 문자열 (예: "compaction installed") 을 정규식으로 잡는 방식이 현실적.
+- compact 진행 중 `thread/compacted` 알림이 onset 인지 완료인지 — binary strings 만으로는 단정 어려움. binary 에 `RawTraceEventPayload::CompactionInstalled` 라는 trace 이벤트 variant 가 컴파일되어 있으나, 이는 내부 trace 심볼이지 사용자에게 보이는 TUI 출력 문자열이라는 보장은 없음. **verified=NO — pane 출력에서 polling 할 실제 완료 신호 문자열은 `<TBD: actual completion string captured during Task 10 live TUI verification>` 로 두고, Task 10 라이브 TUI 검증에서 실제 문자열을 캡처해 확정해야 함**.
 
 ## design 영향
 
@@ -130,7 +129,7 @@ codex \
 
 `/compact` 가 TUI 슬래시 커맨드로 존재함이 확인되었으므로 디자인의 핵심 가정은 살아있음. 그러나 자동화 관점에서:
 - pane 에 `/compact\n` 텍스트를 입력 → **추가로 confirmation 키 입력 필요** (Enter 또는 y 추정). pane-compact.sh 는 두 단계로 입력해야 한다.
-- compact 완료 신호: pane 출력에서 `compaction installed` 또는 시스템 메시지 문자열을 polling. 타임아웃 (15-30s) + fallback 필요.
+- compact 완료 신호: pane 출력에서 `<TBD: actual completion string captured during Task 10 live TUI verification>` 를 polling. 타임아웃 (15-30s) + fallback 필요. **verified=NO — Task 10 must capture from real TUI**: 현 시점에서는 binary strings 의 `RawTraceEventPayload::CompactionInstalled` 가 trace 이벤트 이름으로만 확인됐을 뿐, 사용자에게 표출되는 TUI 문자열이 무엇인지는 미확인. Task 10 라이브 TUI 검증에서 실제 완료 메시지를 캡처해 정규식으로 고정해야 함.
 - **fallback (compact 실패 시)**: 디자인이 우려한 "fresh codex 인스턴스 per phase" 보다, `model_auto_compact_token_limit` config 로 codex 가 알아서 compact 하도록 하는 것이 가장 견고. 자동 compact 가 default 동작 — 우리는 **명시적 `/compact` 를 phase 경계에서 trigger 만 하면 됨**.
 
 ### 3. design 문서 §7.2 / line 297-301 의 코드 블록 수정 필요
@@ -144,6 +143,8 @@ design.md 의 codex 실행 라인을 위 권장 라인으로 교체. R8 (MCP 충
 - **interactive 모드 + `--add-dir`**: phase 간 공유하는 `docs/`, `harness/` 등 외부 디렉토리에 쓰기 필요 시 `--add-dir` 로 명시.
 
 ## 권장 codex 실행 라인 (확정)
+
+TOML parse 확인됨 (`codex -c 'mcp_servers={}' --help` → exit 0). `codex exec -c 'model_reasoning_effort="xhigh"' ...` 도 정상 부팅되어 `reasoning effort: xhigh` 배너 표기됨.
 
 ```bash
 codex -m "${CODEX_MODEL:-gpt-5.5-codex}" -C "${WORKDIR}" -s workspace-write -a never --no-alt-screen -c 'model_reasoning_effort="high"' -c 'mcp_servers={}'
