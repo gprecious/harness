@@ -52,6 +52,7 @@ Independent from `/feature`. Use `/improve` to iteratively improve an existing c
 - `docs/code-improvement/YYYY-MM-DD/iteration-N.md` — Per-iteration reports with auto-fixes and suggestions
 - `docs/code-improvement/YYYY-MM-DD/summary.md` — Cumulative report (generated on plateau)
 - `.code-improver-ignore` — Project-root glob rules (similar syntax to gitignore)
+- `docs/code-improvement/YYYY-MM-DD/events.jsonl` (v0.4.0+) — Append-only structured event log used by plateau detection and crash recovery
 
 ### Design & Plan
 

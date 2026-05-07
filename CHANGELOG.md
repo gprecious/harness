@@ -2,7 +2,7 @@
 
 All notable changes to harness will be documented in this file.
 
-## [0.4.0] - 2026-05-07
+## [0.5.0] - 2026-05-07
 
 ### Added
 - **cmux-pipeline skill**: cmux pane + codex CLI 기반 자율 빌드 파이프라인
@@ -12,9 +12,11 @@ All notable changes to harness will be documented in this file.
   - **Context management**: codex `/compact` 자동 트리거 (218k token threshold)
   - **Retry routing**: NEEDS_HELP → 같은 pane, FAILED/TIMEOUT → fresh pane + codex 재시작; 2회 실패 시 manifest paused
   - **State**: `.pipeline/runs/<run-id>/manifest.json` (atomic write) + per-phase `status.json`
+  - **Workspace isolation**: `workspace-create.sh`/`workspace-close.sh` — 모든 pane 활동이 별도 cmux workspace에서 발생, 사용자 활성 view 무영향
+  - **Safety**: `pane-send.sh`가 focused pane 으로 send 거부 (`PANE_SEND_ALLOW_FOCUSED=1` override)
   - **External plugins** (install + 호출만): garrytan/gstack, gsd-build/get-shit-done, tyroneross/build-loop, superpowers, ralph-loop
-  - 19개 bash scripts (preflight, manifest, phase-status, pane-{create,send,wait,compact,close}, codex-launch, phase-{prompt-build,dispatch}, stage-{spec,decompose,loop,integrate}-finalize/sh, build-{status,list,gc}, resume-prepare)
-  - 75+ bats tests (unit/integration/e2e)
+  - 21개 bash scripts (preflight, manifest, phase-status, pane-{create,send,wait,compact,close}, workspace-{create,close}, codex-launch, phase-{prompt-build,dispatch}, stage-{spec,decompose,loop,integrate}-finalize/sh, build-{status,list,gc}, resume-prepare)
+  - 134+ bats tests (unit/integration/e2e)
   - 6 reference workflow docs for claude orchestration
 - **`/build` slash command**: Router for cmux-pipeline skill
 - Sub-commands: `--resume`, `--status`, `--list`, `--gc`
@@ -22,6 +24,18 @@ All notable changes to harness will be documented in this file.
 ### Notes
 - cmux 0.62.2+, codex-cli 0.128.0+, jq, bats-core 의존
 - 자세한 내용: `skills/cmux-pipeline/README.md`
+- 첫 sandbox 검증에서 발견된 5개 버그(codex-launch model default, multi-line fragmentation, env propagation, manifest 인터페이스 불일치, sandbox flag override) 모두 fix됨
+
+## [0.4.0] - 2026-05-05
+
+### Added
+- **`events.jsonl`**: append-only structured event log under `docs/code-improvement/<date>/events.jsonl` for every `/improve` run. 9 event types: `run_started`, `phase_start`, `phase_end`, `audit_completed`, `category_applied`, `verify_completed`, `plateau_check`, `iteration_completed`, `run_halted`.
+- `skills/code-improver/scripts/log_event.sh`: single-writer helper used by SKILL.md at every phase boundary (16 call sites). Auto-discovers run dir from `docs/code-improvement/*/code-improver-state.md`, auto-injects `ts`, supports dotted-key nesting and JSON value coercion.
+- `skills/code-improver/tests/log_event.test.sh`: 4 unit tests (simple event, dotted-key nesting, value type coercion, append-only durability).
+
+### Changed
+- `references/plateau-detection.md`: now reads `plateau_check` events from `events.jsonl` first, with markdown parsing as fallback for older runs.
+- `templates/code-improver-state.md`: frontmatter gains `events_log: events.jsonl` pointer.
 
 ## [0.3.0] - 2026-04-16
 
