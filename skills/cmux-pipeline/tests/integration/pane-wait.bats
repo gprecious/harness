@@ -20,6 +20,8 @@ setup() {
   SURFACE=$(resolve_surface "$PANE")
   RUN_ID="t$$"
   PHASE_ID="0001-test"
+  # Cleanup on abort / Ctrl+C / SIGTERM (bats teardown is skipped on signals).
+  trap teardown EXIT INT TERM
 }
 
 teardown() {

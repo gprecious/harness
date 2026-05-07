@@ -15,6 +15,12 @@ setup() {
   SCRIPT="$BATS_TEST_DIRNAME/../../scripts/pane-create.sh"
   cmux ping >/dev/null 2>&1 || skip "cmux not running"
   CREATED_SURFACES=()
+  # Belt-and-suspenders: bats calls teardown() on normal completion, but if
+  # the test subprocess receives SIGINT/SIGTERM (Ctrl+C, bats abort) the
+  # teardown is skipped and the panes leak into the user's workspace. The
+  # trap fires on those signals as well; teardown is idempotent (close-surface
+  # is wrapped with `|| true`) so the double-call on normal exit is harmless.
+  trap teardown EXIT INT TERM
 }
 
 teardown() {

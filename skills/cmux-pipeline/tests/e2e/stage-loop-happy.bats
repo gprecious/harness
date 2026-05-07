@@ -51,6 +51,8 @@ EOF
     >/dev/null
   cmux send-key-panel --panel "$SURFACE" enter >/dev/null
   sleep 1
+  # Cleanup on abort / Ctrl+C / SIGTERM (bats teardown is skipped on signals).
+  trap teardown EXIT INT TERM
 }
 
 teardown() {

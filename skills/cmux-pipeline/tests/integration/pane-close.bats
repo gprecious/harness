@@ -12,6 +12,8 @@ setup() {
   CREATE="$BATS_TEST_DIRNAME/../../scripts/pane-create.sh"
   cmux ping >/dev/null 2>&1 || skip "cmux not running"
   PANE=$("$CREATE" --direction down)
+  # Cleanup on abort / Ctrl+C / SIGTERM (bats teardown is skipped on signals).
+  trap teardown EXIT INT TERM
 }
 
 teardown() {

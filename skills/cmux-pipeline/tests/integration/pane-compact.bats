@@ -20,6 +20,8 @@ setup() {
   # shellcheck disable=SC1091
   source "$BATS_TEST_DIRNAME/../../scripts/lib/resolve-surface.sh"
   SURFACE=$(resolve_surface "$PANE")
+  # Cleanup on abort / Ctrl+C / SIGTERM (bats teardown is skipped on signals).
+  trap teardown EXIT INT TERM
 }
 
 teardown() {
