@@ -96,12 +96,19 @@ SURFACE=$(resolve_surface "$PANE") || exit 1
 # Send each line of TEXT, followed by Enter (unless --no-enter).
 # Use a here-string so we capture the trailing line even without a final
 # newline. `IFS= read -r` plus `|| [ -n "$line" ]` handles that case.
+#
+# Empty lines: cmux 0.62.2 rejects `send-panel -- ""` with
+#   "Error: send-panel requires text"
+# To preserve blank-line semantics in multi-line prompts, we skip the
+# send-panel call for empty lines and just press Enter (when not --no-enter).
 send_line() {
   local line="$1"
-  if ! cmux send-panel --panel "$SURFACE" -- "$line" >/dev/null 2>&1; then
-    # Re-run without redirection to surface the error, then exit.
-    cmux send-panel --panel "$SURFACE" -- "$line" >&2
-    exit $?
+  if [ -n "$line" ]; then
+    if ! cmux send-panel --panel "$SURFACE" -- "$line" >/dev/null 2>&1; then
+      # Re-run without redirection to surface the error, then exit.
+      cmux send-panel --panel "$SURFACE" -- "$line" >&2
+      exit $?
+    fi
   fi
   if [ "$NO_ENTER" -eq 0 ]; then
     if ! cmux send-key-panel --panel "$SURFACE" enter >/dev/null 2>&1; then
