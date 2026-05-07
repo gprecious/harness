@@ -10,21 +10,19 @@
 setup() {
   CLOSE="$BATS_TEST_DIRNAME/../../scripts/pane-close.sh"
   CREATE="$BATS_TEST_DIRNAME/../../scripts/pane-create.sh"
+  WS_CREATE="$BATS_TEST_DIRNAME/../../scripts/workspace-create.sh"
+  WS_CLOSE="$BATS_TEST_DIRNAME/../../scripts/workspace-close.sh"
   cmux ping >/dev/null 2>&1 || skip "cmux not running"
-  PANE=$("$CREATE" --direction down)
-  # Cleanup on abort / Ctrl+C / SIGTERM (bats teardown is skipped on signals).
-  trap teardown EXIT INT TERM
+  WORKSPACE=$("$WS_CREATE" --cwd "$BATS_TMPDIR" --title "bats:pane-close")
+  export CMUX_WORKSPACE_ID="$WORKSPACE"
+  PANE=$("$CREATE" --direction down --workspace "$WORKSPACE")
 }
 
 teardown() {
-  # Best-effort cleanup if a test failed before close
-  if [ -n "${PANE:-}" ]; then
-    # shellcheck disable=SC1091
-    source "$BATS_TEST_DIRNAME/../../scripts/lib/resolve-surface.sh"
-    SURFACE=$(resolve_surface "$PANE" 2>/dev/null) || SURFACE=""
-    if [ -n "$SURFACE" ]; then
-      cmux close-surface --surface "$SURFACE" >/dev/null 2>&1 || true
-    fi
+  # Closing the workspace removes every pane in one shot — no per-pane
+  # surface lookup needed.
+  if [ -n "${WORKSPACE:-}" ]; then
+    "$WS_CLOSE" --workspace "$WORKSPACE" >/dev/null 2>&1 || true
   fi
 }
 

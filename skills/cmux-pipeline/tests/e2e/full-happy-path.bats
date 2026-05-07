@@ -9,6 +9,11 @@ setup() {
   TMPDIR=$(mktemp -d)
   cd "$TMPDIR" || exit 1
 
+  # Isolated workspace so e2e activity doesn't appear in the user's view.
+  WORKSPACE=$("$ROOT/scripts/workspace-create.sh" --cwd "$TMPDIR" \
+                --title "bats:e2e-full-happy")
+  export CMUX_WORKSPACE_ID="$WORKSPACE"
+
   git init -q
   git -c "user.name=test" -c "user.email=test@test" \
       commit --allow-empty -m "init" -q
@@ -33,7 +38,7 @@ EOF
   done
 
   # Worker pane primed to emit per-phase SUCCESS sentinels for each input line.
-  PANE=$("$ROOT/scripts/pane-create.sh" --direction down)
+  PANE=$("$ROOT/scripts/pane-create.sh" --direction down --workspace "$WORKSPACE")
   # shellcheck disable=SC1091
   source "$ROOT/scripts/lib/resolve-surface.sh"
   SURFACE=$(resolve_surface "$PANE")
@@ -43,13 +48,12 @@ EOF
     >/dev/null
   cmux send-key-panel --panel "$SURFACE" enter >/dev/null
   sleep 1
-  # Cleanup on abort / Ctrl+C / SIGTERM (bats teardown is skipped on signals).
-  trap teardown EXIT INT TERM
 }
 
 teardown() {
-  if [ -n "${SURFACE:-}" ]; then
-    cmux close-surface --surface "$SURFACE" >/dev/null 2>&1 || true
+  if [ -n "${WORKSPACE:-}" ]; then
+    "$ROOT/scripts/workspace-close.sh" --workspace "$WORKSPACE" \
+      >/dev/null 2>&1 || true
   fi
   cd /
   [ -n "${TMPDIR:-}" ] && rm -rf "$TMPDIR"

@@ -12,6 +12,8 @@ setup() {
   DISPATCH="$BATS_TEST_DIRNAME/../../scripts/phase-dispatch.sh"
   CREATE="$BATS_TEST_DIRNAME/../../scripts/pane-create.sh"
   MANIFEST="$BATS_TEST_DIRNAME/../../scripts/manifest.sh"
+  WS_CREATE="$BATS_TEST_DIRNAME/../../scripts/workspace-create.sh"
+  WS_CLOSE="$BATS_TEST_DIRNAME/../../scripts/workspace-close.sh"
   cmux ping >/dev/null 2>&1 || skip "cmux not running"
 
   TMPDIR=$(mktemp -d)
@@ -29,17 +31,17 @@ Test prompt body — this is the dispatch test.
 The fake-codex stub will detect any input and respond with the sentinel.
 EOF
 
-  PANE=$("$CREATE" --direction down)
+  WORKSPACE=$("$WS_CREATE" --cwd "$TMPDIR" --title "bats:phase-dispatch")
+  export CMUX_WORKSPACE_ID="$WORKSPACE"
+  PANE=$("$CREATE" --direction down --workspace "$WORKSPACE")
   # shellcheck disable=SC1091
   source "$BATS_TEST_DIRNAME/../../scripts/lib/resolve-surface.sh"
   SURFACE=$(resolve_surface "$PANE")
-  # Cleanup on abort / Ctrl+C / SIGTERM (bats teardown is skipped on signals).
-  trap teardown EXIT INT TERM
 }
 
 teardown() {
-  if [ -n "${SURFACE:-}" ]; then
-    cmux close-surface --surface "$SURFACE" >/dev/null 2>&1 || true
+  if [ -n "${WORKSPACE:-}" ]; then
+    "$WS_CLOSE" --workspace "$WORKSPACE" >/dev/null 2>&1 || true
   fi
   cd /
   [ -n "${TMPDIR:-}" ] && rm -rf "$TMPDIR"

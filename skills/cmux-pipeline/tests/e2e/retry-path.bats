@@ -34,7 +34,10 @@ setup() {
 fake retry test phase
 EOF
 
-  PANE=$("$ROOT/scripts/pane-create.sh" --direction down)
+  WORKSPACE=$("$ROOT/scripts/workspace-create.sh" --cwd "$TMPDIR" \
+                --title "bats:e2e-retry")
+  export CMUX_WORKSPACE_ID="$WORKSPACE"
+  PANE=$("$ROOT/scripts/pane-create.sh" --direction down --workspace "$WORKSPACE")
   # shellcheck disable=SC1091
   source "$ROOT/scripts/lib/resolve-surface.sh"
   SURFACE=$(resolve_surface "$PANE")
@@ -46,27 +49,14 @@ EOF
     >/dev/null
   cmux send-key-panel --panel "$SURFACE" enter >/dev/null
   sleep 1
-  # Cleanup on abort / Ctrl+C / SIGTERM (bats teardown is skipped on signals).
-  trap teardown EXIT INT TERM
 }
 
 teardown() {
-  # SURFACE may already be closed by stage-loop's pane-close on FAILED retry.
-  # Also close any fresh-retry pane stage-loop created (best-effort: scan for
-  # the marker text we left in earlier tests' fresh panes).
-  if [ -n "${SURFACE:-}" ]; then
-    cmux close-surface --surface "$SURFACE" >/dev/null 2>&1 || true
-  fi
-  # stage-loop may have created a follow-up pane on the FAILED→retry path.
-  # Read the manifest to find the most recent worker_pane_id and close it too.
-  if [ -n "${RUN_ID:-}" ] && [ -f ".pipeline/runs/$RUN_ID/manifest.json" ]; then
-    next_pane=$("$ROOT/scripts/manifest.sh" read "$RUN_ID" \
-      '.stages.loop.worker_pane_id // empty' 2>/dev/null || echo "")
-    if [ -n "$next_pane" ] && [ "$next_pane" != "$PANE" ]; then
-      next_surface=$(cmux list-pane-surfaces --pane "$next_pane" 2>/dev/null \
-        | grep -oE 'surface:[0-9]+' | head -1)
-      [ -n "$next_surface" ] && cmux close-surface --surface "$next_surface" >/dev/null 2>&1 || true
-    fi
+  # workspace-close removes the original pane and any fresh-retry pane that
+  # stage-loop created — single cleanup primitive.
+  if [ -n "${WORKSPACE:-}" ]; then
+    "$ROOT/scripts/workspace-close.sh" --workspace "$WORKSPACE" \
+      >/dev/null 2>&1 || true
   fi
   cd /
   [ -n "${TMPDIR:-}" ] && rm -rf "$TMPDIR"

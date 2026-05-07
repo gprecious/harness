@@ -12,17 +12,23 @@
 setup() {
   SCRIPT="$BATS_TEST_DIRNAME/../../scripts/pane-send.sh"
   CREATE="$BATS_TEST_DIRNAME/../../scripts/pane-create.sh"
+  WS_CREATE="$BATS_TEST_DIRNAME/../../scripts/workspace-create.sh"
+  WS_CLOSE="$BATS_TEST_DIRNAME/../../scripts/workspace-close.sh"
   cmux ping >/dev/null 2>&1 || skip "cmux not running"
-  PANE=$("$CREATE" --direction down)
+  # Isolated workspace: never split inside the user's active workspace.
+  # Setting CMUX_WORKSPACE_ID makes all cmux commands (list-pane-surfaces,
+  # read-screen, send-panel, etc.) default to this workspace, so existing
+  # scripts that don't take --workspace still resolve correctly.
+  WORKSPACE=$("$WS_CREATE" --cwd "$BATS_TMPDIR" --title "bats:pane-send")
+  export CMUX_WORKSPACE_ID="$WORKSPACE"
+  PANE=$("$CREATE" --direction down --workspace "$WORKSPACE")
   SURFACE=$(cmux list-pane-surfaces --pane "$PANE" 2>/dev/null \
-    | grep -oE 'surface:[0-9]+' | head -1)
-  # Cleanup on abort / Ctrl+C / SIGTERM (bats teardown is skipped on signals).
-  trap teardown EXIT INT TERM
+              | grep -oE 'surface:[0-9]+' | head -1)
 }
 
 teardown() {
-  if [ -n "${SURFACE:-}" ]; then
-    cmux close-surface --surface "$SURFACE" >/dev/null 2>&1 || true
+  if [ -n "${WORKSPACE:-}" ]; then
+    "$WS_CLOSE" --workspace "$WORKSPACE" >/dev/null 2>&1 || true
   fi
 }
 
