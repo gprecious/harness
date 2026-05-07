@@ -42,6 +42,20 @@ PANE_CLOSE="$SCRIPT_DIR/pane-close.sh"
 PANE_COMPACT="$SCRIPT_DIR/pane-compact.sh"
 CODEX_LAUNCH="$SCRIPT_DIR/codex-launch.sh"
 
+# Read codex model + sandbox from manifest options so retries on a fresh pane
+# get the same flags the orchestrator chose at run start. nohup-background
+# subprocesses don't inherit the orchestrator's $CODEX_MODEL/$CODEX_SANDBOX
+# env vars, so without this we'd fall back to codex-launch.sh defaults — the
+# bug found in the first sandbox verification.
+RUN_MODEL=$("$MANIFEST" read "$RUN_ID" '.options.model // empty' 2>/dev/null || echo "")
+[ "$RUN_MODEL" = "null" ] && RUN_MODEL=""
+RUN_SANDBOX=$("$MANIFEST" read "$RUN_ID" '.options.sandbox // empty' 2>/dev/null || echo "")
+[ "$RUN_SANDBOX" = "null" ] && RUN_SANDBOX=""
+
+codex_launch_args=()
+[ -n "$RUN_MODEL" ]   && codex_launch_args+=( --model "$RUN_MODEL" )
+[ -n "$RUN_SANDBOX" ] && codex_launch_args+=( --sandbox "$RUN_SANDBOX" )
+
 PHASES_DIR="$PIPELINE_ROOT/$RUN_ID/decompose/phases"
 [ -d "$PHASES_DIR" ] || {
   echo "stage-loop: phases dir missing: $PHASES_DIR" >&2
@@ -130,7 +144,8 @@ for phase_path in "${phase_paths_sorted[@]}"; do
       echo "[stage-loop] failed to create fresh pane" >&2
       exit 1
     fi
-    "$CODEX_LAUNCH" --pane "$new_pane" --cwd "$(pwd)" || true
+    # Empty-array safe expansion for mac bash 3.2 with `set -u`.
+    "$CODEX_LAUNCH" --pane "$new_pane" --cwd "$(pwd)" ${codex_launch_args[@]+"${codex_launch_args[@]}"} || true
     WORKER_PANE="$new_pane"
     "$MANIFEST" update "$RUN_ID" ".stages.loop.worker_pane_id = \"$new_pane\""
     echo "[stage-loop] phase $phase_id: retrying on fresh pane $new_pane"
