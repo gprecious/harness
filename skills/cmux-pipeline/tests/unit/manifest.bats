@@ -112,3 +112,43 @@ teardown() {
   run "$SCRIPT" bogus
   [ "$status" -ne 0 ]
 }
+
+# --- --flag form parity (added 2026-05-07 after orchestrator footgun) -------
+# The orchestrator first tried `manifest.sh init --run-id X --topic Y` and
+# silently created `.pipeline/runs/--run-id/` because the script took only
+# positional args. These tests pin the new behavior.
+
+@test "manifest gen-run-id accepts --topic flag form" {
+  run "$SCRIPT" gen-run-id --topic "Add Auth Flow"
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ ^[0-9]{8}-[0-9]{4}-add-auth-flow$ ]]
+}
+
+@test "manifest init accepts --run-id and --topic flag form" {
+  RUN_ID="20260507-0000-flagtest"
+  "$SCRIPT" init --run-id "$RUN_ID" --topic "flag form test"
+  [ -f ".pipeline/runs/$RUN_ID/manifest.json" ]
+  jq -e '.topic == "flag form test"' ".pipeline/runs/$RUN_ID/manifest.json"
+}
+
+@test "manifest init rejects unknown flag" {
+  RUN_ID="20260507-0000-rejtest"
+  run "$SCRIPT" init --run-id "$RUN_ID" --topic "x" --bogus y
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"unknown flag"* ]]
+}
+
+@test "manifest read accepts --run-id --jq flag form" {
+  RUN_ID=$("$SCRIPT" gen-run-id "fr")
+  "$SCRIPT" init "$RUN_ID" "fr"
+  result=$("$SCRIPT" read --run-id "$RUN_ID" --jq .topic)
+  [ "$result" = "fr" ]
+}
+
+@test "manifest update accepts --run-id --jq flag form" {
+  RUN_ID=$("$SCRIPT" gen-run-id "fu")
+  "$SCRIPT" init "$RUN_ID" "fu"
+  "$SCRIPT" update --run-id "$RUN_ID" --jq '.options.model = "gpt-5.5"'
+  result=$("$SCRIPT" read "$RUN_ID" '.options.model')
+  [ "$result" = "gpt-5.5" ]
+}
