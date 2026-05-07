@@ -16,6 +16,8 @@ setup() {
   PANE=$("$CREATE" --direction down)
   SURFACE=$(cmux list-pane-surfaces --pane "$PANE" 2>/dev/null \
     | grep -oE 'surface:[0-9]+' | head -1)
+  # Cleanup on abort / Ctrl+C / SIGTERM (bats teardown is skipped on signals).
+  trap teardown EXIT INT TERM
 }
 
 teardown() {
@@ -87,4 +89,26 @@ teardown() {
   [[ "$output" == *"Usage"* ]]
   [[ "$output" == *"--pane"* ]]
   [[ "$output" == *"--text"* ]]
+}
+
+@test "pane-send: refuses to send to focused pane (no override)" {
+  # Find the currently focused pane — that's the one the user is actively
+  # using. pane-send must refuse to write into it.
+  focused=$(cmux list-panes 2>/dev/null \
+    | grep -E '^\*' | grep -oE 'pane:[0-9]+' | head -1)
+  [ -n "$focused" ] || skip "no focused pane in this cmux session"
+  run "$SCRIPT" --pane "$focused" --text "should not arrive"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"refusing to send to focused pane"* ]]
+}
+
+@test "pane-send: PANE_SEND_ALLOW_FOCUSED=1 bypasses guard" {
+  focused=$(cmux list-panes 2>/dev/null \
+    | grep -E '^\*' | grep -oE 'pane:[0-9]+' | head -1)
+  [ -n "$focused" ] || skip "no focused pane in this cmux session"
+  # We don't actually want input arriving in the user's pane during a test,
+  # so use --no-enter and an empty marker. Just assert exit 0.
+  PANE_SEND_ALLOW_FOCUSED=1 run "$SCRIPT" --pane "$focused" \
+    --text "" --no-enter
+  [ "$status" -eq 0 ]
 }

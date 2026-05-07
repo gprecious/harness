@@ -93,6 +93,35 @@ source "$SCRIPT_DIR/lib/resolve-surface.sh"
 
 SURFACE=$(resolve_surface "$PANE") || exit 1
 
+# Safety guard: refuse to send to the currently focused pane. The whole point
+# of cmux-pipeline is to type into a worker pane we created, never into the
+# pane the user is actively looking at. If we ever resolve to the focused
+# pane, that's almost certainly a bug in the caller — the user just got their
+# input field hijacked.
+#
+# History: the first sandbox verification (run-id 20260507-0806) had a probe
+# step that grepped `cmux list-panes` for the focused pane and sent key events
+# to it, hijacking the user's interactive shell. This guard makes that mistake
+# fail loudly instead of silently corrupting the user's session.
+#
+# Override with PANE_SEND_ALLOW_FOCUSED=1 for tests that legitimately need to
+# drive the focused pane (none in current cmux-pipeline code).
+if [ "${PANE_SEND_ALLOW_FOCUSED:-0}" != "1" ]; then
+  focused_pane=$(cmux list-panes 2>/dev/null \
+    | grep -E '^\*' | grep -oE 'pane:[0-9]+' | head -1)
+  if [ -n "$focused_pane" ]; then
+    focused_surface=$(cmux list-pane-surfaces --pane "$focused_pane" 2>/dev/null \
+      | grep -oE 'surface:[0-9]+' | head -1)
+    if { [ -n "$focused_pane" ] && [ "$PANE" = "$focused_pane" ]; } \
+       || { [ -n "$focused_surface" ] && [ "$SURFACE" = "$focused_surface" ]; }; then
+      echo "pane-send: refusing to send to focused pane $focused_pane" >&2
+      echo "  (target was $PANE → $SURFACE). Override with" >&2
+      echo "  PANE_SEND_ALLOW_FOCUSED=1 if intentional." >&2
+      exit 1
+    fi
+  fi
+fi
+
 # Send each line of TEXT, followed by Enter (unless --no-enter).
 # Use a here-string so we capture the trailing line even without a final
 # newline. `IFS= read -r` plus `|| [ -n "$line" ]` handles that case.
