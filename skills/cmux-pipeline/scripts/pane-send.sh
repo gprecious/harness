@@ -84,31 +84,14 @@ done
 [ -z "$PANE" ] && { echo "pane-send: --pane is required" >&2; exit 1; }
 [ "$TEXT_SET" -eq 0 ] && { echo "pane-send: --text is required" >&2; exit 1; }
 
-# Resolve pane ref -> surface ref. cmux send-panel requires a surface ref
-# even though its flag is --panel. If the caller already passed a surface
-# ref or UUID, we pass it through; otherwise we look it up.
-case "$PANE" in
-  surface:*)
-    SURFACE="$PANE"
-    ;;
-  pane:*)
-    SURFACE=$(cmux list-pane-surfaces --pane "$PANE" 2>/dev/null \
-      | grep -oE 'surface:[0-9]+' | head -1)
-    if [ -z "$SURFACE" ]; then
-      echo "pane-send: could not resolve $PANE to a surface ref" >&2
-      exit 1
-    fi
-    ;;
-  *)
-    # Assume UUID; try as a pane ref via list-pane-surfaces. If that fails,
-    # we'll let cmux send-panel surface its own error.
-    SURFACE=$(cmux list-pane-surfaces --pane "$PANE" 2>/dev/null \
-      | grep -oE 'surface:[0-9]+' | head -1)
-    if [ -z "$SURFACE" ]; then
-      SURFACE="$PANE"
-    fi
-    ;;
-esac
+# Resolve pane ref -> surface ref via shared lib. cmux send-panel requires a
+# surface ref even though its flag is --panel. The lib handles surface:*,
+# pane:*, and UUID forms; on hard failure it prints an error and we exit 1.
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/lib/resolve-surface.sh"
+
+SURFACE=$(resolve_surface "$PANE") || exit 1
 
 # Send each line of TEXT, followed by Enter (unless --no-enter).
 # Use a here-string so we capture the trailing line even without a final
