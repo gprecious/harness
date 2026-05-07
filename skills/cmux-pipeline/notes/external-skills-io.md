@@ -36,13 +36,13 @@ Task 32 manual verification 단계에서 1회씩 실제로 돌려 확인하고, 
 (스킬 정의 자체). 실제 출력은 *프로젝트별 글로벌 디렉토리* `~/.gstack/projects/<slug>/`
 밑에 떨어진다.
 
-> **Install layout note**: gstack 의 setup (`./setup --no-prefix`) 은 모든 skill 을
-> `~/.claude/skills/` 바로 아래로 *flatten* 한다 — 즉 `office-hours/`, `autoplan/`,
-> `codex/`, `ship/` 등이 `~/.claude/skills/<name>/SKILL.md` 형태로 설치된다.
-> `~/.claude/skills/gstack/` 디렉토리도 함께 존재하지만 그것은 gstack repo 자체의
-> source tree 이며, Claude 가 실제로 로드하는 SKILL.md 는 flatten 된 쪽이다.
-> 따라서 office-hours/autoplan SKILL.md 를 가리킬 때는
-> `~/.claude/skills/office-hours/SKILL.md` (flatten 본) 를 인용한다.
+> **Install layout note**: gstack 의 setup (`./setup --no-prefix`) 은 각 skill 의
+> `SKILL.md` 를 `~/.claude/skills/<name>/SKILL.md` 위치에 **symlink** 로 만든다
+> (실제 파일은 `~/.claude/skills/gstack/<name>/SKILL.md` — gstack repo source tree).
+> 두 경로 모두 `test -f` 로 존재 검증되지만, Claude 가 discover 하는 entry 는
+> shim (`~/.claude/skills/<name>/SKILL.md`). 따라서 본 문서의 cite 와
+> preflight 의 path 는 **shim 경로** 를 사용한다. (`test -L` 로 symlink 여부를
+>따지면 두 경로의 의미가 갈라지니 단순 `test -f` 사용 권장.)
 
 ### 입력
 - 사용자 자연어 대화 (interactive AskUserQuestion 다수 단계)
@@ -122,8 +122,9 @@ cmux-pipeline 의 `spec` stage 가 끝나면, `/office-hours` 의 산출물을 �
 - **source glob**: `~/.gstack/projects/<slug>/*-design-*.md` 중 가장 최근 1개 (mtime 기준)
   - 또는 정밀 매칭: `~/.gstack/projects/<slug>/*-${BRANCH}-design-*.md`
 - **target**: `.pipeline/runs/<run-id>/spec/design-doc.md` (또는 원본 파일명 보존)
-- **slug 파악**: `eval "$(~/.claude/skills/gstack/bin/gstack-slug)"` 후 `$SLUG` 사용 — 단,
-  이 binary 가 PATH 에 있는지는 preflight 에서 확인 필요
+- **slug 파악**: `eval "$(~/.claude/skills/gstack/bin/gstack-slug)"` 후 `$SLUG` 사용.
+  `gstack-slug` 는 PATH 에 등록되지 않으므로 **반드시 절대 경로**로 호출 (which 결과 없음).
+  preflight 는 `[ -x ~/.claude/skills/gstack/bin/gstack-slug ]` 로 검증.
 
 ### 미확인 / Task 32 verify
 
