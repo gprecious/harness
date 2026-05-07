@@ -47,7 +47,8 @@ setup() {
 @test "rejects unknown flag with non-zero exit" {
   run "$SCRIPT" --bogus-flag
   [ "$status" -ne 0 ]
-  [[ "$output" == *"unknown"* ]] || [[ "$output" == *"Usage"* ]] || [[ "$output" == *"usage"* ]]
+  [[ "$output" == *"unknown"* ]]
+  [[ "$output" == *"Usage"* ]]
 }
 
 @test "empty PATH triggers missing-binary exit 1" {
@@ -58,18 +59,18 @@ setup() {
   # --no-plugin-check skips plugin checks (which need `claude`).
   PATH="" run /bin/bash "$SCRIPT" --no-plugin-check
   [ "$status" -ne 0 ]
-  [[ "$output" == *"missing"* ]] || [[ "$output" == *"cmux"* ]]
+  [[ "$output" == *"missing"* ]]
+  [[ "$output" == *"cmux"* ]]
 }
 
 @test "missing output includes install hint" {
   PATH="" run /bin/bash "$SCRIPT" --no-plugin-check
   [ "$status" -ne 0 ]
-  # When cmux is missing, install hint (cmux.app or install keyword) shown
-  [[ "$output" == *"cmux.app"* ]] || [[ "$output" == *"Install"* ]] || [[ "$output" == *"install"* ]]
+  [[ "$output" == *"cmux.app"* ]]
 }
 
 @test "--help prints usage and exits 0" {
   run "$SCRIPT" --help
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Usage"* ]] || [[ "$output" == *"usage"* ]]
+  [[ "$output" == *"Usage"* ]]
 }
