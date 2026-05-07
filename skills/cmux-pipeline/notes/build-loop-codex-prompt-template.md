@@ -4,10 +4,12 @@
 
 ## 출처 및 라이선스
 
+- 원본 repo: <https://github.com/tyroneross/build-loop>
 - 원본 위치: `tyroneross/build-loop` repo 의 `skills/build-loop/templates/codex-worker-prompt.md`
 - 원본 SHA (clone 시점): `e3c4e910da38d435179da45cd3b1f9d91a4851a9`
 - 라이선스: **FSL-1.1-MIT** — Copyright 2026 Tyrone Ross
-- 본 파일을 cmux-pipeline 에서 추가 가공 / 재배포 할 경우, FSL-1.1-MIT 의 redistribution 조항(라이선스 사본/링크 + 저작권 표기 유지)을 따라야 한다.
+- 라이선스 원문: <https://fsl.software/FSL-1.1-MIT.template.md>
+- 본 파일을 cmux-pipeline 에서 추가 가공 / 재배포 할 경우, FSL-1.1-MIT 의 redistribution 조항(라이선스 사본/링크 + 저작권 표기 유지)을 따라야 한다. 위 라이선스 링크가 그 의무를 충족시키는 사본 링크 역할을 한다.
 
 ## 보조 자료 — Codex subagent 호출 규약
 

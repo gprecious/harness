@@ -12,8 +12,8 @@
   - 워커는 `agents/implementer.md` (Sonnet, parallel ≤4). 추가로 `architecture-scout`, `sonnet-critic`, `fact-checker`, `mock-scanner` 등 다수의 보조 에이전트가 있음.
   - Codex 호스트용 어댑터: `skills/build-loop/references/codex-subagents.md` + `skills/build-loop/templates/codex-worker-prompt.md`.
 - dispatch hook 위치 (Claude 측):
-  - 일차: `agents/build-orchestrator.md:117` — `Top-level mode: dispatch up to 4 implementer subagents in parallel via Agent(subagent_type="build-loop:implementer", ...)`
-  - 동일 패턴: `references/iterate-protocol.md` (Phase 5), `references/phase-gate-checklist.md` (Review-D, architecture-scout 호출)
+  - 일차: `references/iterate-protocol.md:48` — `Top-level mode: dispatch up to 4 implementer subagents in parallel via Agent(subagent_type="build-loop:implementer", ...)` (Phase 5 Iterate 의 fan-out 규약)
+  - 동일 패턴: `skills/build-loop/SKILL.md:527` (Phase 5 Iterate 의 SKILL.md 본문 측 서술 — `iterate-protocol.md` 와 동일한 top-level mode 문구), `references/phase-gate-checklist.md` (Review-D, architecture-scout 호출). Phase 3 Execute (`SKILL.md:320` 이하) 도 parallel subagent 를 쓰지만 별도 문구.
   - 즉, Claude 호스트에서는 **Claude Code 네이티브 `Agent()` 툴**로 호출. 외부 스크립트/wrapper/env-var 없음.
 - dispatch hook 위치 (Codex 측):
   - `skills/build-loop/SKILL.md:328` — Phase 3 Execute 의 항목 5: "If running in Codex, load `references/codex-subagents.md` before any spawn decision. Spawn `explorer` or `worker` subagents only when the Codex permission gate passed."
@@ -21,13 +21,13 @@
 - 패턴: **B (워커 호출이 prompt에 직접 박혀있음)** — 다만 중요한 뉘앙스가 있음 (아래 결정 절 참조).
 - 패턴 근거 (핵심 인용):
 
-  `agents/build-orchestrator.md` Phase 5 인용:
+  `references/iterate-protocol.md:48` (Phase 5 Iterate 의 fan-out 규약, on-demand 로드되는 protocol 문서) 인용:
   ```
   Top-level mode: dispatch up to 4 implementer subagents in parallel via
   Agent(subagent_type="build-loop:implementer", ...). Hard cap from
   ~/.claude/CLAUDE.md §Sub-Agents. Sequential groups process after the parallel batch.
   ```
-  → Claude 호스트에선 Claude Code 의 `Agent()` 툴 호출이 prompt 안에 하드코딩. config / env / hook 으로 교체할 수 있는 dispatcher 슬롯이 없다.
+  → Claude 호스트에선 Claude Code 의 `Agent()` 툴 호출이 prompt 안에 하드코딩. config / env / hook 으로 교체할 수 있는 dispatcher 슬롯이 없다. Phase 3 Execute (별도, `SKILL.md:320` 이하) 도 parallel subagent 를 쓰지만 같은 결론.
 
   `skills/build-loop/SKILL.md:328` 인용:
   ```
@@ -57,7 +57,7 @@
 
 1. **build-loop 의존도를 낮춘다.** stage-loop.sh 는 build-loop 의 Phase 3 dispatcher 를 hook 으로 가로채려 하지 말 것. 대신 stage-loop.sh 가 자체적으로 codex pane 에 메시지를 보내고 (`cmux-pane-chat` 패턴), 결과를 회수하는 루프를 돈다. 즉 stage-loop.sh 가 곧 우리의 "dispatcher" 가 된다.
 2. **build-loop 은 옵션 stage 로만 활용.** 만약 사용자가 "이 build stage 는 build-loop 의 5-phase 사이클로 돌려줘" 라고 명시하면, stage-loop.sh 는 codex pane 안에서 build-loop 의 `/build-loop:run` 을 실행시키고 (`Codex execution adapter` 분기), build-loop 의 결과(Markdown 보고 + 코드 변경)를 stage 결과로 회수한다. 이때 build-loop 은 codex 자신의 worker/explorer subagent 시스템을 사용하므로 우리가 dispatcher 로 끼어들 필요가 없음.
-3. **codex-launch + cmux pane 식별.** build-loop 가 우리 codex pane 을 "알 필요" 가 없다 — 우리가 codex pane 안에서 build-loop 을 실행시키는 흐름이므로 build-loop 입장에서는 "현재 호스트가 Codex" 이기만 하면 된다. cmux pane 식별은 **stage-loop.sh ↔ cmux-pane-chat ↔ codex pane** 사이에서만 의미가 있고, build-loop 가스로의 전달은 prompt 컨텐츠로 충분하다.
+3. **codex-launch + cmux pane 식별.** build-loop 가 우리 codex pane 을 "알 필요" 가 없다 — 우리가 codex pane 안에서 build-loop 을 실행시키는 흐름이므로 build-loop 입장에서는 "현재 호스트가 Codex" 이기만 하면 된다. cmux pane 식별은 **stage-loop.sh ↔ cmux-pane-chat ↔ codex pane** 사이에서만 의미가 있고, build-loop 자체로의 전달은 prompt 컨텐츠로 충분하다.
 
 ### Task 18 (codex worker prompt 작성) 에 미치는 영향
 
@@ -74,7 +74,7 @@ build-loop 은 자체 codex worker prompt 템플릿(`templates/codex-worker-prom
 - 핵심 조항:
   - **Permitted Purpose**: 내부 사용 / 비상업적 교육 / 비상업적 연구 / 라이선시에게 제공하는 전문 서비스. Competing Use (build-loop 을 대체하거나 substantially similar 한 상업적 product/service) 는 금지.
   - **Redistribution**: 복사본 / 수정본 / 파생물 재배포 시 라이선스 사본/링크 + 저작권 표기 유지 필수.
-  - **Future License**: 일정 기간(통상 2년) 후 MIT 로 전환되는 조건이 본문에 명시 (LICENSE 87줄 이하).
+  - **Future License**: 일정 기간(정확히 2년 — FSL-1.1-MIT 정의상 고정) 후 MIT 로 전환되는 조건이 본문에 명시 (LICENSE 87줄 이하).
 - 우리 cmux-pipeline 의 위치:
   - cmux-pipeline 자체는 build-loop 의 source 를 redistribute 하지 않는다. build-loop 은 사용자가 별도 install 하는 외부 plugin 으로만 다룬다.
   - 우리가 build-loop 의 **prompt 템플릿** 일부를 우리 repo 에 복사해 두는 경우 (`build-loop-codex-prompt-template.md`), 그 파일에 출처와 FSL-1.1-MIT 표기를 함께 둔다.
