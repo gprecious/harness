@@ -60,17 +60,19 @@ teardown() {
 }
 
 @test "pane-send: --no-enter leaves text at prompt without executing" {
-  marker="NOENTER_$$"
-  "$SCRIPT" --pane "$PANE" --text "echo $marker" --no-enter
+  # Use a command that would produce a distinctive ERROR if executed,
+  # so we can verify --no-enter actually prevented execution. Sending
+  # `echo $marker` would execute fine even with Enter, which makes the
+  # negative assertion brittle (marker appears twice: prompt + output).
+  marker="NOENTER_BOGUS_CMD_$$"
+  "$SCRIPT" --pane "$PANE" --text "$marker" --no-enter
   sleep 1
   output=$(cmux read-screen --surface "$SURFACE" --lines 50)
-  # The literal command text should be visible at the prompt
-  [[ "$output" == *"echo $marker"* ]]
-  # But the marker should NOT appear on its own line as command output
-  # (i.e. the only occurrence is the typed prompt text, no echo'd result).
-  # We assert that the marker count is exactly 1 (only the prompt line).
-  count=$(printf '%s\n' "$output" | grep -cF "$marker")
-  [ "$count" -eq 1 ]
+  # Text was typed at the prompt
+  [[ "$output" == *"$marker"* ]]
+  # Command was NOT executed → no "command not found" error
+  [[ "$output" != *"command not found"* ]]
+  [[ "$output" != *"not found"* ]]
 }
 
 @test "pane-send: rejects unknown flag" {
