@@ -1,0 +1,39 @@
+# Failure Handling
+
+## phase 결과 라우팅 (stage-loop.sh가 수행)
+
+| sentinel | 조치 |
+|---|---|
+| SUCCESS | commit_sha 캡처, 다음 phase |
+| NEEDS_HELP | claude orch가 prompt 보강 → 같은 pane 1회 재시도 |
+| FAILED | fresh pane + codex 재시작 → 재시도 |
+| TIMEOUT (exit 124) | fresh pane + 단순화 prompt 재시도 |
+| 2회 실패 | manifest paused, 사용자 알림, 종료 (exit 2) |
+
+## 사용자 confirm prompt (2회 실패 시)
+
+```
+✗ phase 0004 middleware: 2회 실패
+  마지막 에러:
+    .pipeline/runs/.../phases/0004-middleware/error.log:42-58
+  옵션:
+    [r] 재시도 (fresh pane)
+    [s] 스킵 (manifest 표시 후 다음 페이즈)
+    [a] 중단 (manifest paused)
+    [e] error.log 열기
+  선택 [r/s/a/e]:
+```
+
+## error.log 작성
+
+`stage-loop.sh` 에서 phase 실패 시 직전 200줄을 `phases/<phase-id>/error.log`로 dump.
+
+## resume from paused
+
+`/build --resume <run-id>` 실행 시:
+
+1. `bash scripts/resume-prepare.sh <run-id>` 호출 → JSON 메타
+2. `resume_from` 필드 확인:
+   - `loop:<phase-id>` → 해당 phase 부터 재시도 (failed_phases 에서 첫 phase)
+   - 그 외 stage → 해당 stage 부터 재실행
+3. worker_pane_id 가 살아있으면 재사용; 없으면 fresh pane + codex-launch

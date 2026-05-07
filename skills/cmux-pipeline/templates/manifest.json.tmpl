@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "run_id": "{{RUN_ID}}",
+  "topic": "{{TOPIC}}",
+  "started_at": "{{TIMESTAMP}}",
+  "updated_at": "{{TIMESTAMP}}",
+  "status": "initialized",
+  "options": {
+    "checkpoint": ["spec", "decompose"],
+    "skip": [],
+    "greenfield": null,
+    "compact_every": null,
+    "phase_timeout_sec": 1200,
+    "model": null
+  },
+  "stages": {
+    "spec":      { "status": "pending" },
+    "decompose": { "status": "pending" },
+    "loop":      { "status": "pending", "completed_phases": [], "failed_phases": [] },
+    "integrate": { "status": "pending" }
+  },
+  "git": {
+    "feature_branch": null,
+    "base_branch": null,
+    "commits": []
+  },
+  "checkpoints": {
+    "paused_at": null,
+    "paused_reason": null
+  }
+}
