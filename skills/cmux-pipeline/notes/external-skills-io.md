@@ -32,9 +32,17 @@ Task 32 manual verification 단계에서 1회씩 실제로 돌려 확인하고, 
 
 ### 설치 후 파일 트리
 
-`~/.claude/skills/gstack/office-hours/` 에는 `SKILL.md`, `SKILL.md.tmpl` 두 개만 존재
+`~/.claude/skills/office-hours/` 에는 `SKILL.md`, `SKILL.md.tmpl` 두 개만 존재
 (스킬 정의 자체). 실제 출력은 *프로젝트별 글로벌 디렉토리* `~/.gstack/projects/<slug>/`
 밑에 떨어진다.
+
+> **Install layout note**: gstack 의 setup (`./setup --no-prefix`) 은 모든 skill 을
+> `~/.claude/skills/` 바로 아래로 *flatten* 한다 — 즉 `office-hours/`, `autoplan/`,
+> `codex/`, `ship/` 등이 `~/.claude/skills/<name>/SKILL.md` 형태로 설치된다.
+> `~/.claude/skills/gstack/` 디렉토리도 함께 존재하지만 그것은 gstack repo 자체의
+> source tree 이며, Claude 가 실제로 로드하는 SKILL.md 는 flatten 된 쪽이다.
+> 따라서 office-hours/autoplan SKILL.md 를 가리킬 때는
+> `~/.claude/skills/office-hours/SKILL.md` (flatten 본) 를 인용한다.
 
 ### 입력
 - 사용자 자연어 대화 (interactive AskUserQuestion 다수 단계)
@@ -44,7 +52,7 @@ Task 32 manual verification 단계에서 1회씩 실제로 돌려 확인하고, 
 
 **`/office-hours` 의 메인 산출물 = design doc 1 개.**
 - 경로 패턴: `~/.gstack/projects/{slug}/{user}-{branch}-design-{datetime}.md`
-- 출처: `~/.claude/skills/gstack/office-hours/SKILL.md:1531-1546`
+- 출처: `~/.claude/skills/office-hours/SKILL.md:1531-1546`
 
   ```
   eval "$(~/.claude/skills/gstack/bin/gstack-slug 2>/dev/null)" && mkdir -p ~/.gstack/projects/$SLUG
@@ -63,7 +71,7 @@ Task 32 manual verification 단계에서 1회씩 실제로 돌려 확인하고, 
 
 ### Design doc 본문 구조 (Startup mode, 문서 기반)
 
-출처: `~/.claude/skills/gstack/office-hours/SKILL.md:1548-1609`
+출처: `~/.claude/skills/office-hours/SKILL.md:1548-1609`
 
 ```
 # Design: {title}
@@ -101,7 +109,7 @@ plan 파일 위에 CEO/Eng/Design/DevEx 리뷰를 적용해 같은 plan 파일�
 
 부수 산출물:
 - **restore point**: `~/.gstack/projects/$SLUG/{branch}-autoplan-restore-{datetime}.md`
-  - 출처: `~/.claude/skills/gstack/autoplan/SKILL.md:958` (`echo "RESTORE_PATH=$HOME/.gstack/projects/$SLUG/${BRANCH}-autoplan-restore-${DATETIME}.md"`)
+  - 출처: `~/.claude/skills/autoplan/SKILL.md:958` (`echo "RESTORE_PATH=$HOME/.gstack/projects/$SLUG/${BRANCH}-autoplan-restore-${DATETIME}.md"`)
   - plan 파일 최상단에 HTML 코멘트로 경로 삽입: `<!-- /autoplan restore point: [RESTORE_PATH] -->` (`autoplan/SKILL.md:975`)
 - **test plan artifact**: `~/.gstack/projects/$SLUG/{user}-{branch}-test-plan-{datetime}.md`
   - 출처: `autoplan/SKILL.md:1311` (`Test plan: generate artifact at ~/.gstack/projects/$SLUG/{user}-{branch}-test-plan-{datetime}.md`)
@@ -141,6 +149,13 @@ cmux-pipeline 의 `spec` stage 가 끝나면, `/office-hours` 의 산출물을 �
 GSD 는 GStack 과 달리 *모든 산출물을 프로젝트 로컬 `.planning/` 디렉토리* 에 쓴다 (홈
 디렉토리 아님). 이는 cmux-pipeline 입장에서 매우 중요한 차이점이다.
 
+> **Install layout note**: gsd 의 `--global --claude` 설치는 *세 개의 병렬 트리* 를 깐다:
+> - `~/.claude/skills/gsd-*/` — 각 command 별 진입점 SKILL.md (예: `gsd-plan-phase/SKILL.md`)
+> - `~/.claude/agents/gsd-*.md` — 실제 작업 agent (예: `gsd-planner.md`, `gsd-phase-researcher.md`).
+>   **sub-디렉토리가 아니라 `agents/` 바로 아래에 평면 배치.** skills/gsd-*/agents/ 같은 경로는 *없다*.
+> - `~/.claude/get-shit-done/workflows/*.md` — workflow 본체 (예: `plan-phase.md`, `new-project.md`,
+>   `map-codebase.md`). plugin marketplace 와 무관한 별도 설치 경로.
+
 ### `/gsd-map-codebase` 출력 파일 (verified=NO)
 
 출처: `~/.claude/get-shit-done/workflows/map-codebase.md:303-318`
@@ -173,11 +188,11 @@ GSD 는 GStack 과 달리 *모든 산출물을 프로젝트 로컬 `.planning/` 
 ### `/gsd-plan-phase N` 출력 파일 (verified=NO)
 
 페이즈 디렉토리: `.planning/phases/{padded_phase}-{phase_slug}/`
-- 출처: `~/.claude/get-shit-done/workflows/plan-phase.md:111-114`
+- 출처: `~/.claude/get-shit-done/workflows/plan-phase.md:86`
   ```
   mkdir -p ".planning/phases/${padded_phase}-${phase_slug}"
   ```
-- `padded_phase`: zero-padded (예: `01`, `02`, `02.1`) — `agents/gsd-planner.md:1094`
+- `padded_phase`: zero-padded (예: `01`, `02`, `02.1`) — `~/.claude/agents/gsd-planner.md:1065`
 - `phase_slug`: ROADMAP.md 의 phase name 에서 derive
 
 페이즈 디렉토리 안의 산출 파일들:
@@ -188,14 +203,15 @@ GSD 는 GStack 과 달리 *모든 산출물을 프로젝트 로컬 `.planning/` 
 | `{padded_phase}-CONTEXT.md` | `--prd <file>` 또는 `/gsd-discuss-phase` 결과 | `plan-phase.md:188-195`, `plan-phase.md:255` |
 | `{padded_phase}-VALIDATION.md` | Nyquist validation 활성화 시 (`workflow.nyquist_validation`) | `plan-phase.md:510` |
 | `{padded_phase}-PATTERNS.md` | 패턴 매퍼 활성화 시 (`workflow.pattern_mapper`) | `plan-phase.md:765,788` |
-| `{padded_phase}-{NN}-PLAN.md` | **메인 산출물** — 각 plan 1개당 1파일 | `plan-phase.md:679,1009` + `agents/gsd-planner.md:1086-1109` |
-| `{padded_phase}-{NN}-SUMMARY.md` | plan 실행 완료 후 (execute-phase 단계) | `agents/gsd-planner.md:494` |
+| `{padded_phase}-{NN}-PLAN.md` | **메인 산출물** — 각 plan 1개당 1파일 | `plan-phase.md:679,1009` + `~/.claude/agents/gsd-planner.md:1063-1080` |
+| `{padded_phase}-{NN}-SUMMARY.md` | plan 실행 완료 후 (execute-phase 단계) | `~/.claude/agents/gsd-planner.md:494` |
 | `SKELETON.md` | `--mvp` Phase 1 walking skeleton 모드 | `plan-phase.md:102` |
 | `{padded_phase}-AI-SPEC.md` / `UI-SPEC.md` | `gsd-ai-integration-phase` / `gsd-ui-phase` 사전 실행 시 | `plan-phase.md:317,570,592` |
 | `{padded_phase}-PLAN-OUTLINE.md` | chunked planning 모드 | `plan-phase.md:945,965` |
 
 **핵심**: PLAN 파일명은 정확히 `{padded_phase}-{NN}-PLAN.md` (예: `01-01-PLAN.md`,
-`03-02-PLAN.md`, `02.1-01-PLAN.md`). 출처 `agents/gsd-planner.md:1092-1101`:
+`03-02-PLAN.md`, `02.1-01-PLAN.md`). 출처 `~/.claude/agents/gsd-planner.md:1063` (pattern)
+및 `:1067` (suffix):
 
 ```
 The filename MUST follow the exact pattern: {padded_phase}-{NN}-PLAN.md
@@ -204,8 +220,8 @@ The filename MUST follow the exact pattern: {padded_phase}-{NN}-PLAN.md
 
 ### PLAN.md 본문 구조 (verified=NO)
 
-출처: `~/.claude/skills/gsd-planner/...` 가 아니라 npm 패키지 내부의 `agents/gsd-planner.md:417-496`
-(설치본 동등). 핵심 골격:
+출처: `~/.claude/agents/gsd-planner.md:417-496` (gsd 는 skills/ 와 agents/ 트리를 *나란히* 설치한다 —
+플래너는 `agents/gsd-planner.md` 에 있고, `skills/gsd-plan-phase/SKILL.md` 는 단순 진입점). 핵심 골격:
 
 ```markdown
 ---
@@ -292,7 +308,7 @@ build-loop 는 `~/.build-loop/` 같은 글로벌 state 가 있을 가능성이 �
 
 | 영향 받는 항목 | 영향 내용 |
 |---|---|
-| **preflight.sh (Task 6)** | 다음 셋을 검증해야 함:<br>(a) `~/.claude/skills/gstack/office-hours/SKILL.md` 존재 (gstack 설치) — 또는 `~/.claude/skills/gstack/bin/gstack-slug` 실행 가능<br>(b) `~/.claude/skills/gsd-plan-phase/SKILL.md` 존재 (GSD 설치)<br>(c) (옵션) `claude plugin list \| grep build-loop` — 우리는 호출 안 하지만 install-pattern 참고용 |
+| **preflight.sh (Task 6)** | 다음을 검증해야 함:<br>(a) **gstack 설치**: `~/.claude/skills/office-hours/SKILL.md` 존재 (flatten 설치본) **그리고** `~/.claude/skills/gstack/bin/gstack-slug` 실행 가능 (slug 산출에 필요). 보너스로 `~/.claude/skills/autoplan/SKILL.md` 도 있으면 autoplan 사용 가능.<br>(b) **GSD 설치**: 다음 트리들이 *모두* 있어야 함:<br>&nbsp;&nbsp;• `~/.claude/skills/gsd-plan-phase/SKILL.md` (skill entry point)<br>&nbsp;&nbsp;• `~/.claude/agents/gsd-planner.md` (실제 plan 생성 agent — **sibling agents/ 트리에 있음, skills/ 아래가 아님**)<br>&nbsp;&nbsp;• `~/.claude/get-shit-done/workflows/plan-phase.md` (workflow 정의)<br>(c) (옵션) `claude plugin list \| grep build-loop` — 우리는 호출 안 하지만 install-pattern 참고용 |
 | **stage-spec-finalize.sh (Task 16)** | input glob: `~/.gstack/projects/<slug>/*-design-*.md` 의 가장 최근 파일.<br>`<slug>` 는 `eval "$(~/.claude/skills/gstack/bin/gstack-slug)"` 결과.<br>대상 brunch 도 같이 사용하려면 `*-${BRANCH_DASHED}-design-*.md` (slash → dash) — 단 이는 verified=NO 이므로 fallback 필요. |
 | **stage-decompose-finalize.sh (Task 17)** | input dir: `<repo>/.planning/phases/{padded_phase}-*/`<br>그 안의 `{padded_phase}-*-PLAN.md` 전부 + `{padded_phase}-CONTEXT.md` + `{padded_phase}-RESEARCH.md`<br>`padded_phase` 는 우리가 결정/주입할 phase 번호 (zero-padding 2자리 가정, ≥100 이면 재검토). |
 | **stage-decompose 의 PLAN.md 파싱** | `<tasks>` XML-ish 블록 파싱 필요. YAML frontmatter 의 `wave`/`depends_on`/`files_modified` 도 추출하면 wave-based 병렬 실행과 호환 가능. |
