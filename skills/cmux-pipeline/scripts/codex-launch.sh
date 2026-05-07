@@ -5,26 +5,29 @@
 # 0.128.0), the actual codex CLI flag surface is:
 #   -m, --model <name>             model selection
 #   -C, --cd <path>                working directory
-#   -s, --sandbox <mode>           workspace-write recommended (R5)
-#   -a, --ask-for-approval <mode>  'never' for headless (was --auto-approve in design)
+#   -s, --sandbox <mode>           sandbox mode (omit to respect ~/.codex/config.toml)
+#   -a, --ask-for-approval <mode>  'never' for headless
 #   --no-alt-screen                REQUIRED inside cmux for scrollback preservation
 #   -c <key=value>                 TOML config override (repeatable)
-#       mcp_servers={}                  disables MCP (was --no-mcp in design)
-#       model_reasoning_effort="high"   raises reasoning effort (was --reasoning high)
+#       model_reasoning_effort="high"   raises reasoning effort
 #
-# Resulting command line (typed into the pane):
-#   codex -m <MODEL> -C <CWD> -s workspace-write -a never --no-alt-screen \
-#         -c 'model_reasoning_effort="high"' -c 'mcp_servers={}'
+# Default resulting command line (typed into the pane):
+#   codex -m <MODEL> -C <CWD> -a never --no-alt-screen \
+#         -c 'model_reasoning_effort="high"'
 #
-# Quoting:
-#   - The single quotes around -c values are essential. zsh and bash both
-#     glob `{}` and reinterpret `"`. We want the pane's shell to receive the
-#     literal token `-c mcp_servers={}` — single quotes survive the
-#     pane-send.sh roundtrip because we transmit the entire command as one
-#     string, and the pane's interactive shell parses it normally.
+# Sandbox: by default we DO NOT pass -s, so codex respects the user's
+# ~/.codex/config.toml `sandbox_mode`. The first sandbox verification (run-id
+# 20260507-0806-routine-tracker) found that hard-coding `-s workspace-write`
+# blocked npm registry access for users whose config grants
+# `danger-full-access`. Pass --sandbox <mode> to override explicitly.
+#
+# Trust prompt: codex prompts "Do you trust the contents of this directory?" on
+# first launch in a new directory. We auto-answer "1" (Yes) by default after
+# the launch wait. Disable with --no-auto-trust if you want manual control.
 #
 # Usage:
-#   codex-launch.sh --pane <pane:N|surface:N> --cwd <path> [--model <name>]
+#   codex-launch.sh --pane <pane:N|surface:N> --cwd <path>
+#                   [--model <name>] [--sandbox <mode>] [--no-auto-trust]
 #
 # After launch, the codex interactive session runs in the pane. Use
 # pane-send.sh to send prompts and pane-wait.sh to wait for sentinels.
@@ -38,17 +41,21 @@ Usage: codex-launch.sh --pane <ref> --cwd <path> [options]
 Start an interactive codex session inside a cmux pane.
 
 Required:
-  --pane <ref>     Target pane ref (pane:N | surface:N | UUID)
-  --cwd <path>     Working directory for the codex session
+  --pane <ref>          Target pane ref (pane:N | surface:N | UUID)
+  --cwd <path>          Working directory for the codex session
 
 Options:
-  --model <name>   Codex model name (overrides $CODEX_MODEL env)
-  --help, -h       Show this help and exit 0
+  --model <name>        Codex model (overrides $CODEX_MODEL env, default gpt-5.5)
+  --sandbox <mode>      Codex sandbox mode (workspace-write, danger-full-access).
+                        Default: omit -s entirely (respect ~/.codex/config.toml).
+  --no-auto-trust       Do NOT auto-answer codex's directory trust prompt.
+                        Default: send "1" + Enter ~5s after launch.
+  --help, -h            Show this help and exit 0
 
 Environment:
-  CODEX_MODEL        default model when --model not given
-                     (default: gpt-5.5-codex)
-  CODEX_EXTRA_FLAGS  extra flags appended to the codex invocation
+  CODEX_MODEL           default model when --model not given (default: gpt-5.5)
+  CODEX_SANDBOX         default sandbox mode when --sandbox not given
+  CODEX_EXTRA_FLAGS     extra flags appended to the codex invocation
 
 Exit codes:
   0  Codex command typed into the pane successfully.
@@ -60,7 +67,9 @@ USAGE
 
 PANE=""
 CWD=""
-MODEL="${CODEX_MODEL:-gpt-5.5-codex}"
+MODEL="${CODEX_MODEL:-gpt-5.5}"
+SANDBOX="${CODEX_SANDBOX:-}"
+AUTO_TRUST=1
 EXTRA_FLAGS="${CODEX_EXTRA_FLAGS:-}"
 
 while [ $# -gt 0 ]; do
@@ -76,6 +85,13 @@ while [ $# -gt 0 ]; do
     --model)
       [ $# -ge 2 ] || { echo "codex-launch: --model requires a value" >&2; exit 2; }
       MODEL="$2"; shift 2
+      ;;
+    --sandbox)
+      [ $# -ge 2 ] || { echo "codex-launch: --sandbox requires a value" >&2; exit 2; }
+      SANDBOX="$2"; shift 2
+      ;;
+    --no-auto-trust)
+      AUTO_TRUST=0; shift
       ;;
     --help|-h)
       usage; exit 0
@@ -97,9 +113,13 @@ SEND="$SCRIPT_DIR/pane-send.sh"
 
 # Compose the codex invocation. The pane's interactive shell will execute it
 # verbatim, so we must produce text that's syntactically valid in that shell.
-# The single quotes around -c values are intentional: they protect `{}` from
-# globbing and `"high"` from quote-stripping by the pane's shell.
-cmd="cd \"$CWD\" && codex -m \"$MODEL\" -C \"$CWD\" -s workspace-write -a never --no-alt-screen -c 'model_reasoning_effort=\"high\"' -c 'mcp_servers={}'"
+# Single quotes around -c values protect `"high"` from the pane shell's
+# quote-stripping pass.
+cmd="cd \"$CWD\" && codex -m \"$MODEL\" -C \"$CWD\""
+if [ -n "$SANDBOX" ]; then
+  cmd="$cmd -s \"$SANDBOX\""
+fi
+cmd="$cmd -a never --no-alt-screen -c 'model_reasoning_effort=\"high\"'"
 if [ -n "$EXTRA_FLAGS" ]; then
   cmd="$cmd $EXTRA_FLAGS"
 fi
@@ -108,7 +128,23 @@ fi
 
 # Codex needs ~2-3s to render its banner and become input-ready. Sleep so
 # callers can immediately follow up with pane-send.sh prompts without racing
-# the TUI startup.
-sleep 3
+# the TUI startup. Need a few extra seconds for the trust prompt to render.
+sleep 5
+
+# Auto-handle codex's "Do you trust the contents of this directory?" prompt.
+# Only fires when codex hasn't seen this dir before; idempotent on repeat
+# launches in the same dir (the prompt won't appear, our "1\n" lands in the
+# normal input buffer and is harmless).
+if [ "$AUTO_TRUST" -eq 1 ]; then
+  surface=$(cmux list-pane-surfaces --pane "$PANE" 2>/dev/null \
+    | grep -oE 'surface:[0-9]+' | head -1)
+  if [ -n "$surface" ]; then
+    screen=$(cmux read-screen --surface "$surface" --lines 30 2>/dev/null || echo "")
+    if echo "$screen" | grep -q "trust the contents"; then
+      "$SEND" --pane "$PANE" --text "1" >/dev/null 2>&1 || true
+      sleep 2
+    fi
+  fi
+fi
 
 exit 0

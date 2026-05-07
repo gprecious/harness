@@ -39,6 +39,8 @@ setup() {
   FAKE_DIR=$(mktemp -d)
   ln -sf "$BATS_TEST_DIRNAME/../fixtures/fake-codex.sh" "$FAKE_DIR/codex"
   export PATH="$FAKE_DIR:$PATH"
+  # Cleanup on abort / Ctrl+C / SIGTERM (bats teardown is skipped on signals).
+  trap teardown EXIT INT TERM
 }
 
 teardown() {
@@ -98,4 +100,32 @@ teardown() {
   sleep 1
   output=$(cmux read-screen --surface "$SURFACE" --lines 80)
   [[ "$output" == *"custom-model-xxx"* ]]
+}
+
+# --- New flags added 2026-05-07 (after first sandbox verification) ----------
+
+@test "codex-launch: default omits -s flag (respects user config)" {
+  run "$LAUNCH" --pane "$PANE" --cwd "$BATS_TEST_DIRNAME"
+  [ "$status" -eq 0 ]
+  sleep 1
+  output=$(cmux read-screen --surface "$SURFACE" --lines 80)
+  # The typed command line must NOT contain `-s workspace-write` because we
+  # removed the hard-coded default. Old behavior would have included it.
+  [[ "$output" != *"-s workspace-write"* ]]
+  [[ "$output" != *"-s danger-full-access"* ]]
+}
+
+@test "codex-launch: --sandbox passes -s through" {
+  run "$LAUNCH" --pane "$PANE" --cwd "$BATS_TEST_DIRNAME" \
+    --sandbox "danger-full-access"
+  [ "$status" -eq 0 ]
+  sleep 1
+  output=$(cmux read-screen --surface "$SURFACE" --lines 80)
+  [[ "$output" == *"-s"* ]]
+  [[ "$output" == *"danger-full-access"* ]]
+}
+
+@test "codex-launch: --no-auto-trust accepted without error" {
+  run "$LAUNCH" --pane "$PANE" --cwd "$BATS_TEST_DIRNAME" --no-auto-trust
+  [ "$status" -eq 0 ]
 }
