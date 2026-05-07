@@ -2,6 +2,27 @@
 
 All notable changes to harness will be documented in this file.
 
+## [0.4.0] - 2026-05-07
+
+### Added
+- **cmux-pipeline skill**: cmux pane + codex CLI 기반 자율 빌드 파이프라인
+  - `/build <topic>` 한 줄로 spec → 페이즈 분해 → TDD 루프 → 통합까지 자동
+  - 4-stage: Spec(GStack `/office-hours`+`/autoplan`) → Decompose(GSD `/gsd-plan-phase`) → Loop(codex worker per phase) → Integrate(`superpowers:verification-before-completion`)
+  - **Architecture**: claude orchestrator 가 plan/spec/refactor 담당, long-lived codex worker 가 cmux pane 안에서 test code/구현 담당
+  - **Context management**: codex `/compact` 자동 트리거 (218k token threshold)
+  - **Retry routing**: NEEDS_HELP → 같은 pane, FAILED/TIMEOUT → fresh pane + codex 재시작; 2회 실패 시 manifest paused
+  - **State**: `.pipeline/runs/<run-id>/manifest.json` (atomic write) + per-phase `status.json`
+  - **External plugins** (install + 호출만): garrytan/gstack, gsd-build/get-shit-done, tyroneross/build-loop, superpowers, ralph-loop
+  - 19개 bash scripts (preflight, manifest, phase-status, pane-{create,send,wait,compact,close}, codex-launch, phase-{prompt-build,dispatch}, stage-{spec,decompose,loop,integrate}-finalize/sh, build-{status,list,gc}, resume-prepare)
+  - 75+ bats tests (unit/integration/e2e)
+  - 6 reference workflow docs for claude orchestration
+- **`/build` slash command**: Router for cmux-pipeline skill
+- Sub-commands: `--resume`, `--status`, `--list`, `--gc`
+
+### Notes
+- cmux 0.62.2+, codex-cli 0.128.0+, jq, bats-core 의존
+- 자세한 내용: `skills/cmux-pipeline/README.md`
+
 ## [0.3.0] - 2026-04-16
 
 ### Added
