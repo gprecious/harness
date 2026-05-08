@@ -31,15 +31,13 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 MANIFEST="$SCRIPT_DIR/manifest.sh"
 
 # Collect wisdom artifacts (any *.md under WISDOM_ROOT, excluding index.md).
+# Use `find` for bash 3.2+ portability — `shopt -s globstar` is bash 4+ only.
 artifacts=()
-shopt -s nullglob globstar
-for f in "$WISDOM_ROOT"/**/*.md; do
-  [ -f "$f" ] || continue
-  base=$(basename "$f")
-  [ "$base" = "index.md" ] && continue
-  artifacts+=("\"$f\"")
-done
-shopt -u nullglob globstar
+if [ -d "$WISDOM_ROOT" ]; then
+  while IFS= read -r f; do
+    artifacts+=("\"$f\"")
+  done < <(find "$WISDOM_ROOT" -type f -name '*.md' ! -name 'index.md' | LC_ALL=C sort)
+fi
 
 if [ "${#artifacts[@]}" -eq 0 ]; then
   echo "stage-learn: no wisdom artifacts under $WISDOM_ROOT" >&2

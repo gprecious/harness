@@ -35,3 +35,22 @@ teardown() { rm -rf "$TMP"; }
   [ "$status" -ne 0 ]
   [[ "$output" == *"<run-id> required"* ]]
 }
+
+@test "recurses into nested wisdom subdirs and sorts deterministically" {
+  mkdir -p "$WISDOM_ROOT/patterns/sub" "$WISDOM_ROOT/decisions"
+  printf '# a\n' > "$WISDOM_ROOT/patterns/a.md"
+  printf '# b\n' > "$WISDOM_ROOT/patterns/sub/b.md"
+  printf '# c\n' > "$WISDOM_ROOT/decisions/c.md"
+  printf '# index\n' > "$WISDOM_ROOT/index.md"
+  run "$STAGE_LEARN" "$RUN_ID"
+  [ "$status" -eq 0 ]
+  run jq -r '.stages.learn.artifacts | length' "$PIPELINE_ROOT/$RUN_ID/manifest.json"
+  [ "$output" = "3" ]
+  # Sorted order: decisions/c.md, patterns/a.md, patterns/sub/b.md
+  run jq -r '.stages.learn.artifacts[0]' "$PIPELINE_ROOT/$RUN_ID/manifest.json"
+  [[ "$output" == *"decisions/c.md" ]]
+  run jq -r '.stages.learn.artifacts[1]' "$PIPELINE_ROOT/$RUN_ID/manifest.json"
+  [[ "$output" == *"patterns/a.md" ]]
+  run jq -r '.stages.learn.artifacts[2]' "$PIPELINE_ROOT/$RUN_ID/manifest.json"
+  [[ "$output" == *"patterns/sub/b.md" ]]
+}
