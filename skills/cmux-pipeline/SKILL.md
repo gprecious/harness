@@ -11,11 +11,13 @@ tools: Read, Write, Edit, Bash, Grep, Glob, Agent
 
 `/build <topic>` 한 줄로 spec 작성 → 페이즈 분해 → TDD 루프 → 통합 까지 자동 실행. 기존 harness skill 들과 독립.
 
-4-stage:
+6-stage:
 1. **Spec** (GStack): `/office-hours` + `/autoplan`
 2. **Decompose** (GSD): `/gsd-new-project` 또는 `/gsd-map-codebase`, `/gsd-plan-phase --prd`
-3. **Loop** (build-loop + codex worker): per-phase RED → GREEN → review
-4. **Integrate**: `superpowers:verification-before-completion`
+3. **Contract** (harness): `contract-negotiator` agent → `contract.md`
+4. **Loop** (build-loop + codex worker): per-phase RED → GREEN → review
+5. **Integrate**: `superpowers:verification-before-completion`
+6. **Learn** (harness): `wisdom-extractor` agent → `docs/wisdom/`
 
 claude orch (현재 세션)이 plan/spec/test scenario/refactor를 담당하고, long-lived codex worker가 cmux pane에서 test code/구현 작성. 컨텍스트는 codex `/compact` 명령으로 관리.
 
@@ -43,7 +45,7 @@ Don't use:
 
 | Option | Default | 설명 |
 |---|---|---|
-| `--checkpoint=<stages>` | `spec,decompose` | 정지점. `none` 으로 풀-오토 |
+| `--checkpoint=<stages>` | `spec,decompose,contract` | 정지점. `none` 으로 풀-오토 |
 | `--skip=<stages>` | `` | `spec,decompose` 스킵 가능 |
 | `--greenfield` / `--brownfield` | auto-detect | GSD 진입점 |
 | `--phase-timeout=<sec>` | `1200` | phase timeout |
@@ -95,8 +97,10 @@ Don't use:
 ### 4. Stage 진행
 - Stage 1: `references/stage-spec.md`
 - Stage 2: `references/stage-decompose.md`
-- Stage 3: `references/stage-loop.md`
-- Stage 4: `references/stage-integrate.md`
+- Stage 3: `references/stage-contract.md`
+- Stage 4: `references/stage-loop.md`
+- Stage 5: `references/stage-integrate.md`
+- Stage 6: `references/stage-learn.md`
 
 각 stage 끝에 checkpoint가 활성화되어 있으면 `▶ Stage N 완료` + resume 안내 출력하고 종료.
 
