@@ -99,6 +99,18 @@ export LINT_COMMAND="<repo lint cmd>"
 export INTERFACE_CONTRACT="<see PLAN body>"
 export TEST_PATHS="<see PLAN body>"
 
+# Inject contract reference if contract.md exists in the run dir.
+# Value embeds its own surrounding blank lines so the section renders cleanly
+# whether or not the placeholder is populated. When absent, the placeholder
+# line collapses to empty, leaving a single blank between sections.
+CONTRACT_PATH="$PIPELINE_ROOT/$RUN_ID/contract.md"
+if [ -f "$CONTRACT_PATH" ]; then
+  CONTRACT_REFERENCE=$'\n## Contract Reference\n\nQuality bar for this phase is defined in `contract.md`. Treat as informational guidance — sentinel routing is unchanged.\n'
+else
+  CONTRACT_REFERENCE=""
+fi
+export CONTRACT_REFERENCE
+
 awk '
   function repl(s, key, val,    out, i, n) {
     out=""
@@ -125,6 +137,7 @@ awk '
     line = repl(line, "{{INTERFACE_CONTRACT}}",ENVIRON["INTERFACE_CONTRACT"])
     line = repl(line, "{{TEST_PATHS}}",        ENVIRON["TEST_PATHS"])
     line = repl(line, "{{TOPIC}}",             ENVIRON["TOPIC"])
+    line = repl(line, "{{CONTRACT_REFERENCE}}",ENVIRON["CONTRACT_REFERENCE"])
     print line
   }
 ' "$TMPL" > "$OUT.tmp"

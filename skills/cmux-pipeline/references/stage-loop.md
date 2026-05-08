@@ -13,13 +13,17 @@
    ```
 2. worker pane 생성 + codex 인터랙티브 시작:
    ```bash
-   pane=$(bash scripts/pane-create.sh --direction down)
+   workspace=$(bash scripts/workspace-create.sh --cwd "$REPO_ROOT" --title "cmux-pipeline:<run-id>")
+   pane=$(bash scripts/pane-create.sh --direction down --workspace "$workspace")
    bash scripts/codex-launch.sh --pane "$pane" --cwd "$REPO_ROOT"
-   bash scripts/manifest.sh update <run-id> ".stages.loop.worker_pane_id = \"$pane\""
+   bash scripts/manifest.sh update <run-id> \
+     ".options.workspace_id = \"$workspace\" | .stages.loop.worker_pane_id = \"$pane\""
    ```
 3. `bash scripts/stage-loop.sh <run-id> <pane>` 호출 → 본 스크립트가 모든 페이즈를 처리.
 4. 모든 phase SUCCESS → `stage-loop.sh` 가 manifest `stages.loop.status = "completed"` 로 마킹하고 exit 0.
 5. 한 페이즈가 2회 연속 실패 → `stage-loop.sh` 가 manifest 를 `paused` 로 마킹하고 exit 2 — orch 가 사용자에게 알리고 종료한다.
+
+> Hard rule: orch 는 현재 focused workspace 를 사용하지 않는다. 시작 시 전용 workspace 를 만들고, 이후 모든 pane 생성/재시도/재사용은 해당 run 이 직접 만든 workspace/pane 으로만 제한한다.
 
 ## 페이즈 처리 절차 (stage-loop.sh 가 수행)
 
@@ -59,7 +63,7 @@ orch 가 `stages.loop.status = "running"` 직전 `manifest.options.*` 에 기록
 |---|---|---|---|
 | `model` | string | (codex 기본) | retry 시 codex-launch 에 `--model <value>` 전달 |
 | `sandbox` | string | (codex 기본) | retry 시 codex-launch 에 `--sandbox <value>` 전달 |
-| `workspace_id` | string | (현 focused) | stage-loop 가 `CMUX_WORKSPACE_ID` export. retry pane 이 사용자 active workspace 가 아닌 isolated workspace 에 생성됨. orch 는 시작 시 `bash scripts/workspace-create.sh` 로 만든 ref 를 여기 기록하고, 종료 시 `workspace-close.sh` 로 정리해야 한다. |
+| `workspace_id` | string | required | stage-loop 가 `CMUX_WORKSPACE_ID` export. retry pane 이 사용자 active workspace 가 아닌 isolated workspace 에 생성됨. orch 는 시작 시 `bash scripts/workspace-create.sh` 로 만든 ref 를 여기 기록하고, 종료 시 `workspace-close.sh` 로 정리해야 한다. |
 
 ## 다음 단계
 

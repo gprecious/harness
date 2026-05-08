@@ -2,6 +2,20 @@
 
 All notable changes to harness will be documented in this file.
 
+## [0.6.0] - 2026-05-08
+
+### Added
+- **cmux-pipeline / contract+wisdom hooks**: 4-stage → 6-stage 파이프라인.
+  - **Stage 3 contract**: decompose 후 `contract-negotiator` agent 호출 → `.pipeline/runs/<run-id>/contract.md` 생성. default checkpoint 에 `contract` 추가.
+  - **Stage 6 learn**: integrate 후 `wisdom-extractor` agent 호출 → `docs/wisdom/{patterns,decisions,evaluations,test-recipes}/` 누적.
+  - **Manifest schema_version 1 → 2** (additive: `stages.contract`, `stages.learn`).
+  - **Phase prompt 주입**: contract.md 가 있으면 codex worker prompt 의 "Contract Reference" 섹션에 path 자동 inline (informational, sentinel 라우팅 무변경).
+  - **Resume**: `--resume` 가 contract/learn 스테이지로 재진입 가능.
+  - **Failure routing**: contract 실패 → paused. learn 실패 → 경고만 (run 자체는 completed).
+  - 신규 스크립트: `stage-contract.sh`, `stage-learn.sh`. 신규 references: `stage-contract.md`, `stage-learn.md`.
+  - 신규 unit 테스트 5개 파일 (14건): schema-v2, stage-contract, stage-learn, phase-prompt-contract, resume-contract-learn.
+- **harness-orchestrator 와의 첫 흡수**: contract.md 와 wisdom-extractor 산출물 위치(`docs/wisdom/`)가 두 스킬 간 통일됨. 추후 통합 시 manifest.json 단일 백본으로 합칠 기반.
+
 ## [0.5.1] - 2026-05-07
 
 ### Changed

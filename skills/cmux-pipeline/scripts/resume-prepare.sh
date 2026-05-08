@@ -35,10 +35,27 @@ case "$status" in
   *) echo "resume-prepare: run is not resumable: status=$status" >&2; exit 1 ;;
 esac
 
-jq '{
-  run_id: .run_id,
-  topic: .topic,
-  resume_from: .checkpoints.paused_at,
-  worker_pane_id: .stages.loop.worker_pane_id,
-  options: .options
-}' "$f"
+# Resolve resume_from:
+#   1. If checkpoints.paused_at is non-null, use it (preserves existing
+#      fine-grained checkpoints like "loop:03-routes").
+#   2. Otherwise, walk the canonical stage sequence and pick the first
+#      stage whose status != "completed". Treats missing stages (e.g. on
+#      a schema_version 1 manifest) as pending.
+jq '
+  . as $m
+  | {
+      run_id: .run_id,
+      topic: .topic,
+      resume_from: (
+        if (.checkpoints.paused_at // null) != null then
+          .checkpoints.paused_at
+        else
+          (["spec","decompose","contract","loop","integrate","learn"]
+           | map(select((($m.stages[.].status) // "pending") != "completed"))
+           | .[0])
+        end
+      ),
+      worker_pane_id: .stages.loop.worker_pane_id,
+      options: .options
+    }
+' "$f"

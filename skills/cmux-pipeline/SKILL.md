@@ -9,13 +9,15 @@ tools: Read, Write, Edit, Bash, Grep, Glob, Agent
 
 ## Overview
 
-`/build <topic>` 한 줄로 spec 작성 → 페이즈 분해 → TDD 루프 → 통합 까지 자동 실행. 기존 harness skill 들과 독립.
+`/build <topic>` 한 줄로 spec → 페이즈 분해 → contract → TDD 루프 → 통합 → learn 까지 자동 실행. 기존 harness skill 들과 독립.
 
-4-stage:
+6-stage:
 1. **Spec** (GStack): `/office-hours` + `/autoplan`
 2. **Decompose** (GSD): `/gsd-new-project` 또는 `/gsd-map-codebase`, `/gsd-plan-phase --prd`
-3. **Loop** (build-loop + codex worker): per-phase RED → GREEN → review
-4. **Integrate**: `superpowers:verification-before-completion`
+3. **Contract** (harness): `contract-negotiator` agent → `contract.md`
+4. **Loop** (build-loop + codex worker): per-phase RED → GREEN → review
+5. **Integrate**: `superpowers:verification-before-completion`
+6. **Learn** (harness): `wisdom-extractor` agent → `docs/wisdom/`
 
 claude orch (현재 세션)이 plan/spec/test scenario/refactor를 담당하고, long-lived codex worker가 cmux pane에서 test code/구현 작성. 컨텍스트는 codex `/compact` 명령으로 관리.
 
@@ -43,7 +45,7 @@ Don't use:
 
 | Option | Default | 설명 |
 |---|---|---|
-| `--checkpoint=<stages>` | `spec,decompose` | 정지점. `none` 으로 풀-오토 |
+| `--checkpoint=<stages>` | `spec,decompose,contract` | 정지점. `none` 으로 풀-오토 |
 | `--skip=<stages>` | `` | `spec,decompose` 스킵 가능 |
 | `--greenfield` / `--brownfield` | auto-detect | GSD 진입점 |
 | `--phase-timeout=<sec>` | `1200` | phase timeout |
@@ -65,6 +67,13 @@ Don't use:
 ## Orchestration Workflow
 
 `/build` 가 호출되면 claude orchestrator는 다음 절차를 따른다.
+
+### Workspace / Pane Isolation Hard Rule
+
+- 절대 현재 focused workspace 에 worker pane 을 만들거나 입력을 보내지 않는다.
+- 새 run 은 반드시 `workspace-create.sh` 로 전용 cmux workspace 를 먼저 만들고, 모든 `pane-create.sh` 호출은 `--workspace <created-workspace>` 를 명시한다.
+- 생성한 workspace ref 는 즉시 `manifest.options.workspace_id` 에 기록한다. retry/relaunch 는 이 manifest 값만 신뢰한다.
+- pane 재사용은 이 run 이 직접 생성했고 manifest 에 기록된 worker pane 에 한정한다. 사용자가 이미 열어둔 pane, focused pane, 출처가 불명확한 pane 은 재사용하지 않는다.
 
 ### 1. 입력 파싱
 - 첫 인자: topic (또는 `--resume <run-id>`, `--status`, `--list`, `--gc`)
@@ -88,8 +97,10 @@ Don't use:
 ### 4. Stage 진행
 - Stage 1: `references/stage-spec.md`
 - Stage 2: `references/stage-decompose.md`
-- Stage 3: `references/stage-loop.md`
-- Stage 4: `references/stage-integrate.md`
+- Stage 3: `references/stage-contract.md`
+- Stage 4: `references/stage-loop.md`
+- Stage 5: `references/stage-integrate.md`
+- Stage 6: `references/stage-learn.md`
 
 각 stage 끝에 checkpoint가 활성화되어 있으면 `▶ Stage N 완료` + resume 안내 출력하고 종료.
 
@@ -97,6 +108,6 @@ Don't use:
 - `references/failure-handling.md` 참조
 
 ### 6. 출력 디자인
-- 명확한 진행 1줄/이벤트 (▶ Stage N/4, [phase X/Y] ✓ Ms)
+- 명확한 진행 1줄/이벤트 (▶ Stage N/6, [phase X/Y] ✓ Ms)
 - Quiet by default — codex 출력 표시 X. log 위치만 안내.
 - `--verbose` 시 codex pane scrollback tail

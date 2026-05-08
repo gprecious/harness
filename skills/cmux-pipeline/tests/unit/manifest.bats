@@ -48,7 +48,7 @@ teardown() {
 @test "manifest init produces valid JSON with required fields" {
   RUN_ID=$("$SCRIPT" gen-run-id "test")
   "$SCRIPT" init "$RUN_ID" "test"
-  jq -e '.schema_version == 1' ".pipeline/runs/$RUN_ID/manifest.json"
+  jq -e '.schema_version == 2' ".pipeline/runs/$RUN_ID/manifest.json"
   jq -e '.topic == "test"' ".pipeline/runs/$RUN_ID/manifest.json"
   jq -e ".run_id == \"$RUN_ID\"" ".pipeline/runs/$RUN_ID/manifest.json"
   jq -e '.status == "initialized"' ".pipeline/runs/$RUN_ID/manifest.json"

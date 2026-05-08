@@ -18,7 +18,8 @@
 #   - SUCCESS                        → record commit, next phase
 #   - NEEDS_HELP                     → retry on the SAME pane
 #   - FAILED  / TIMEOUT (exit 124)   → close pane, create fresh pane + codex
-#                                       relaunch, retry on the new pane
+#                                       relaunch inside the run workspace,
+#                                       retry on the new pane
 #   - second attempt fails           → manifest paused, exit 2
 
 set -uo pipefail
@@ -60,7 +61,15 @@ RUN_SANDBOX=$("$MANIFEST" read "$RUN_ID" '.options.sandbox // empty' 2>/dev/null
 # pipeline state is the single source of truth.
 RUN_WORKSPACE=$("$MANIFEST" read "$RUN_ID" '.options.workspace_id // empty' 2>/dev/null || echo "")
 [ "$RUN_WORKSPACE" = "null" ] && RUN_WORKSPACE=""
+if [ -z "$RUN_WORKSPACE" ] && [ -n "${CMUX_WORKSPACE_ID:-}" ]; then
+  RUN_WORKSPACE="$CMUX_WORKSPACE_ID"
+fi
 [ -n "$RUN_WORKSPACE" ] && export CMUX_WORKSPACE_ID="$RUN_WORKSPACE"
+
+if [ -z "$RUN_WORKSPACE" ]; then
+  echo "stage-loop: manifest.options.workspace_id is required; refusing to create panes in the focused workspace" >&2
+  exit 1
+fi
 
 codex_launch_args=()
 [ -n "$RUN_MODEL" ]   && codex_launch_args+=( --model "$RUN_MODEL" )
@@ -150,7 +159,7 @@ for phase_path in "${phase_paths_sorted[@]}"; do
     echo "[stage-loop] phase $phase_id: retrying on same pane $new_pane (NEEDS_HELP)"
   else
     "$PANE_CLOSE" --pane "$WORKER_PANE" || true
-    if ! new_pane=$("$PANE_CREATE" --direction down); then
+    if ! new_pane=$("$PANE_CREATE" --direction down --workspace "$RUN_WORKSPACE"); then
       echo "[stage-loop] failed to create fresh pane" >&2
       exit 1
     fi
