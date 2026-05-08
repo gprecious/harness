@@ -66,6 +66,13 @@ Don't use:
 
 `/build` 가 호출되면 claude orchestrator는 다음 절차를 따른다.
 
+### Workspace / Pane Isolation Hard Rule
+
+- 절대 현재 focused workspace 에 worker pane 을 만들거나 입력을 보내지 않는다.
+- 새 run 은 반드시 `workspace-create.sh` 로 전용 cmux workspace 를 먼저 만들고, 모든 `pane-create.sh` 호출은 `--workspace <created-workspace>` 를 명시한다.
+- 생성한 workspace ref 는 즉시 `manifest.options.workspace_id` 에 기록한다. retry/relaunch 는 이 manifest 값만 신뢰한다.
+- pane 재사용은 이 run 이 직접 생성했고 manifest 에 기록된 worker pane 에 한정한다. 사용자가 이미 열어둔 pane, focused pane, 출처가 불명확한 pane 은 재사용하지 않는다.
+
 ### 1. 입력 파싱
 - 첫 인자: topic (또는 `--resume <run-id>`, `--status`, `--list`, `--gc`)
 - options 추출
