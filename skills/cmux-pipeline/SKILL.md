@@ -9,7 +9,7 @@ tools: Read, Write, Edit, Bash, Grep, Glob, Agent
 
 ## Overview
 
-`/build <topic>` 한 줄로 spec 작성 → 페이즈 분해 → TDD 루프 → 통합 까지 자동 실행. 기존 harness skill 들과 독립.
+`/build <topic>` 한 줄로 spec → 페이즈 분해 → contract → TDD 루프 → 통합 → learn 까지 자동 실행. 기존 harness skill 들과 독립.
 
 6-stage:
 1. **Spec** (GStack): `/office-hours` + `/autoplan`
@@ -108,6 +108,6 @@ Don't use:
 - `references/failure-handling.md` 참조
 
 ### 6. 출력 디자인
-- 명확한 진행 1줄/이벤트 (▶ Stage N/4, [phase X/Y] ✓ Ms)
+- 명확한 진행 1줄/이벤트 (▶ Stage N/6, [phase X/Y] ✓ Ms)
 - Quiet by default — codex 출력 표시 X. log 위치만 안내.
 - `--verbose` 시 codex pane scrollback tail
