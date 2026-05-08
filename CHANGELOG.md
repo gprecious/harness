@@ -2,6 +2,18 @@
 
 All notable changes to harness will be documented in this file.
 
+## [0.6.1] - 2026-05-08
+
+### Added
+- **cmux-pipeline / workspace auto-close**: `/build` 가 더 이상 실행 후 cmux workspace 를 남기지 않는다. 4가지 종료 시점에서 자동 정리 (생성 시점은 Stage 4 직전 그대로).
+  - **Stage 6 (learn) 정상 완료**: `stage-learn.sh` 가 `manifest.options.workspace_id` 와 `keep_workspace` 플래그를 읽고 workspace-close 호출.
+  - **사용자 abort**: 2회 실패 / contract 실패 prompt 의 `[a]` 선택 시 manifest.status = `aborted` 로 마킹 + workspace-close (resume 불가).
+  - **`/build --gc`**: old run 디렉토리를 지우기 직전 manifest 의 workspace_id 를 읽어 close. orphan workspace 누적 방지.
+  - **preflight orphan sweep**: 새 run 시작 시 `cmux list-workspaces` 의 `cmux-pipeline:<run-id>` 패턴 항목 중 manifest 가 없거나 status in (completed, aborted) 인 것만 자동 close. running/paused 는 보존.
+  - **escape hatch**: `--keep-workspace` 옵션 — 디버깅용으로 정상 종료 후에도 workspace 유지.
+  - **manifest schema**: `options.keep_workspace: false` 추가 (additive, schema_version 그대로 2).
+  - 신규 unit 테스트 9건 (`test-workspace-lifecycle.bats`): cmux PATH stub 으로 close 호출 시퀀스 검증.
+
 ## [0.6.0] - 2026-05-08
 
 ### Added

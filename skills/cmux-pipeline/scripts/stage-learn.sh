@@ -50,3 +50,23 @@ artifacts_json="[$(IFS=,; echo "${artifacts[*]}")]"
   ".stages.learn.status = \"completed\" | .stages.learn.artifacts = $artifacts_json"
 
 echo "stage-learn: marked completed for $RUN_ID (${#artifacts[@]} artifact(s))"
+
+# Auto-close the run's dedicated cmux workspace unless the user opted to keep
+# it for post-mortem inspection (--keep-workspace → manifest.options.keep_workspace).
+# The workspace was created by workspace-create.sh at Stage 4 entry; closing it
+# here is the symmetric teardown for the normal DONE path.
+WORKSPACE_CLOSE="$SCRIPT_DIR/workspace-close.sh"
+KEEP=$("$MANIFEST" read "$RUN_ID" '.options.keep_workspace // false' 2>/dev/null || echo "false")
+WORKSPACE_REF=$("$MANIFEST" read "$RUN_ID" '.options.workspace_id // empty' 2>/dev/null || echo "")
+
+if [ "$KEEP" = "true" ]; then
+  if [ -n "$WORKSPACE_REF" ]; then
+    echo "stage-learn: keeping workspace $WORKSPACE_REF (--keep-workspace)"
+  fi
+elif [ -n "$WORKSPACE_REF" ]; then
+  if [ -x "$WORKSPACE_CLOSE" ] && command -v cmux >/dev/null 2>&1; then
+    if "$WORKSPACE_CLOSE" --workspace "$WORKSPACE_REF" 2>/dev/null; then
+      echo "stage-learn: closed workspace $WORKSPACE_REF"
+    fi
+  fi
+fi

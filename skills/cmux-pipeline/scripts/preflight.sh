@@ -32,11 +32,15 @@ Usage: preflight.sh [--dry-run] [--no-plugin-check] [--help]
 Verifies cmux-pipeline external dependencies are installed.
 
 Options:
-  --dry-run            Run all checks but print "OK (dry-run)" on success.
-  --no-plugin-check    Skip the claude plugin / install-path half.
-                       Useful in CI where plugins aren't installed but you
-                       still want to verify binaries.
-  --help               Show this help and exit 0.
+  --dry-run             Run all checks but print "OK (dry-run)" on success.
+  --no-plugin-check     Skip the claude plugin / install-path half.
+                        Useful in CI where plugins aren't installed but you
+                        still want to verify binaries.
+  --no-orphan-cleanup   Skip the cmux orphan workspace sweep. By default,
+                        preflight closes any cmux workspace whose title is
+                        `cmux-pipeline:<run-id>` and whose manifest is missing,
+                        completed, or aborted (so abandoned runs don't pile up).
+  --help                Show this help and exit 0.
 
 Exit codes:
   0  All required dependencies present.
@@ -46,12 +50,14 @@ USAGE
 
 DRY_RUN=0
 NO_PLUGIN_CHECK=0
+NO_ORPHAN_CLEANUP=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --dry-run)         DRY_RUN=1 ;;
-    --no-plugin-check) NO_PLUGIN_CHECK=1 ;;
-    --help|-h)         usage; exit 0 ;;
+    --dry-run)            DRY_RUN=1 ;;
+    --no-plugin-check)    NO_PLUGIN_CHECK=1 ;;
+    --no-orphan-cleanup)  NO_ORPHAN_CLEANUP=1 ;;
+    --help|-h)            usage; exit 0 ;;
     *)
       echo "preflight: unknown flag: $1" >&2
       echo "" >&2
@@ -151,6 +157,51 @@ if [ ${#missing[@]} -gt 0 ]; then
   echo "" >&2
   echo "preflight: FAILED" >&2
   exit 1
+fi
+
+# Orphan workspace sweep: close any cmux workspace titled `cmux-pipeline:<run-id>`
+# whose manifest is missing or terminal (completed/aborted). This stops abandoned
+# runs from piling up between /build invocations. Live runs (status running,
+# paused, initialized) are preserved so /build --resume still works.
+if [ "$NO_ORPHAN_CLEANUP" -eq 0 ] && command -v cmux >/dev/null 2>&1; then
+  SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+  WORKSPACE_CLOSE="$SCRIPT_DIR/workspace-close.sh"
+  PIPELINE_ROOT="${PIPELINE_ROOT:-.pipeline/runs}"
+  cleaned=0
+  if [ -x "$WORKSPACE_CLOSE" ] && command -v jq >/dev/null 2>&1; then
+    # cmux list-workspaces lines look like:
+    #   * workspace:11  ✳ Claude Code  [selected]
+    #     workspace:137  cmux-pipeline:20260508-1100-foo
+    while IFS= read -r line; do
+      ws=$(printf '%s' "$line" | grep -oE 'workspace:[0-9]+' | head -1)
+      [ -z "$ws" ] && continue
+      # Title is everything after the ref token, trimmed.
+      title=$(printf '%s' "$line" | sed -E 's/.*workspace:[0-9]+[[:space:]]+//' | sed -E 's/[[:space:]]+\[selected\][[:space:]]*$//' | sed -E 's/[[:space:]]+$//')
+      case "$title" in
+        cmux-pipeline:*)
+          run_id="${title#cmux-pipeline:}"
+          manifest="$PIPELINE_ROOT/$run_id/manifest.json"
+          should_close=0
+          if [ ! -f "$manifest" ]; then
+            should_close=1
+          else
+            status=$(jq -r '.status // empty' "$manifest" 2>/dev/null || echo "")
+            case "$status" in
+              completed|aborted) should_close=1 ;;
+            esac
+          fi
+          if [ "$should_close" -eq 1 ]; then
+            if "$WORKSPACE_CLOSE" --workspace "$ws" >/dev/null 2>&1; then
+              cleaned=$((cleaned + 1))
+            fi
+          fi
+          ;;
+      esac
+    done < <(cmux list-workspaces 2>/dev/null || true)
+  fi
+  if [ "$cleaned" -gt 0 ]; then
+    echo "preflight: cleaned up $cleaned orphan workspace(s)"
+  fi
 fi
 
 if [ "$DRY_RUN" -eq 1 ]; then

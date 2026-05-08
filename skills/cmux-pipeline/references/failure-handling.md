@@ -19,10 +19,17 @@
   옵션:
     [r] 재시도 (fresh pane)
     [s] 스킵 (manifest 표시 후 다음 페이즈)
-    [a] 중단 (manifest paused)
+    [a] 중단 (manifest aborted, workspace 자동 close)
     [e] error.log 열기
   선택 [r/s/a/e]:
 ```
+
+`[a] 중단` 선택 시 orch 가:
+1. `bash scripts/manifest.sh update <run-id> '.status = "aborted" | .checkpoints.aborted_at = "loop:<phase-id>" | .checkpoints.paused_reason = "user aborted after phase failure"'`
+2. `manifest.options.workspace_id` 가 있고 `manifest.options.keep_workspace` 가 true 가 아니면 `bash scripts/workspace-close.sh --workspace "$WORKSPACE"` (idempotent — 실패해도 무시)
+3. exit 2
+
+> 차이: `paused` 는 resume 가능 (workspace + worker pane 보존), `aborted` 는 사용자가 명시적으로 종료 의사를 밝힌 상태이므로 workspace 도 함께 정리한다.
 
 ## error.log 작성
 
@@ -56,9 +63,14 @@ bash scripts/manifest.sh update <run-id> \
   옵션:
     [r] contract-negotiator 재dispatch
     [m] contract.md 수동 작성 후 stage-contract.sh 재실행
-    [a] 중단
+    [a] 중단 (workspace 자동 close)
   선택 [r/m/a]:
 ```
+
+`[a] 중단` 선택 시 orch 가:
+1. `bash scripts/manifest.sh update <run-id> '.status = "aborted" | .checkpoints.aborted_at = "contract"'`
+2. `manifest.options.workspace_id` 가 있고 `manifest.options.keep_workspace` 가 true 가 아니면 `bash scripts/workspace-close.sh --workspace "$WORKSPACE"`
+3. exit 2
 
 resume from `contract`:
 - `/build --resume <run-id>` 시 `resume_from = "contract"` 라우팅.

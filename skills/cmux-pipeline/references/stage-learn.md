@@ -38,6 +38,7 @@
    ```
    - `docs/wisdom/` 하위 *.md (index.md 제외) 1개 이상 존재 검증
    - manifest: `stages.learn.status = "completed"`, `artifacts = [...]`
+   - **자동 workspace close**: `manifest.options.keep_workspace` 가 true 가 아니고 `manifest.options.workspace_id` 가 있으면 `stage-learn.sh` 가 직접 `workspace-close.sh` 를 호출. cmux 가 PATH 에 없으면 silent skip (CI 등). `--keep-workspace` 옵션이 켜져 있으면 메시지만 출력하고 살려둠.
 
 5. **사용자 안내 (final summary)**:
    ```
@@ -45,6 +46,7 @@
      contract: contract.md
      completed phases: <N>
      wisdom artifacts: <K> file(s) under docs/wisdom/
+     workspace: closed  (또는 kept (--keep-workspace))
      PR 생성: gh pr create --base main --head <feature_branch>
    ```
 

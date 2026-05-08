@@ -54,6 +54,7 @@ Don't use:
 | `--dry-run` | `false` | preflight 만 |
 | `--verbose` | `false` | codex pane scrollback tail |
 | `--model=<name>` | (codex default) | codex 모델 override |
+| `--keep-workspace` | `false` | 정상 완료/abort 후에도 cmux workspace 유지 (post-mortem 디버깅용). 기본은 자동 close. |
 
 ## Dependencies (preflight 검증)
 
@@ -74,6 +75,19 @@ Don't use:
 - 새 run 은 반드시 `workspace-create.sh` 로 전용 cmux workspace 를 먼저 만들고, 모든 `pane-create.sh` 호출은 `--workspace <created-workspace>` 를 명시한다.
 - 생성한 workspace ref 는 즉시 `manifest.options.workspace_id` 에 기록한다. retry/relaunch 는 이 manifest 값만 신뢰한다.
 - pane 재사용은 이 run 이 직접 생성했고 manifest 에 기록된 worker pane 에 한정한다. 사용자가 이미 열어둔 pane, focused pane, 출처가 불명확한 pane 은 재사용하지 않는다.
+
+### Workspace Lifecycle
+
+생성과 close 가 대칭이다. 생성 시점은 Stage 4 (Loop) 진입 직전 (`references/stage-loop.md` 절차 2). 자동 close 시점은 4가지:
+
+| 시점 | 트리거 | 동작 |
+|---|---|---|
+| Stage 6 (Learn) 완료 | `stage-learn.sh` 가 `manifest.stages.learn.status = completed` 로 마킹한 직후 | `manifest.options.keep_workspace` 가 false 면 workspace-close. status = `completed`. |
+| 사용자 abort | `failure-handling.md` 의 2회 실패 / contract 실패 prompt 에서 `[a]` 선택 | manifest.status = `aborted`, workspace-close. resume 불가. |
+| `/build --gc` | old run 디렉토리 삭제 직전 | manifest 의 workspace_id 가 살아있으면 close 후 rm -rf. orphan workspace 누적 방지. |
+| `preflight` orphan sweep | 새 run 시작 시 `preflight.sh` 가 cmux 의 `cmux-pipeline:<run-id>` 패턴 workspace 들을 스캔 | manifest 가 없거나 status in (completed, aborted) 인 것만 close. running/paused 는 보존. |
+
+`paused` 상태는 resume 가능하므로 close 하지 않는다. 디버깅용으로 정상 종료 후에도 workspace 를 살리고 싶으면 `--keep-workspace` 사용.
 
 ### 1. 입력 파싱
 - 첫 인자: topic (또는 `--resume <run-id>`, `--status`, `--list`, `--gc`)

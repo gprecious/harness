@@ -21,25 +21,26 @@ setup() {
 }
 
 @test "exits 0 in env with all deps present" {
-  run "$SCRIPT"
+  # --no-orphan-cleanup so the dev-machine cmux state isn't mutated by tests.
+  run "$SCRIPT" --no-orphan-cleanup
   [ "$status" -eq 0 ]
   [[ "$output" == *"OK"* ]]
 }
 
 @test "--dry-run flag exits 0 and mentions dry-run" {
-  run "$SCRIPT" --dry-run
+  run "$SCRIPT" --dry-run --no-orphan-cleanup
   [ "$status" -eq 0 ]
   [[ "$output" == *"dry-run"* ]]
 }
 
 @test "--no-plugin-check alone exits 0" {
-  run "$SCRIPT" --no-plugin-check
+  run "$SCRIPT" --no-plugin-check --no-orphan-cleanup
   [ "$status" -eq 0 ]
   [[ "$output" == *"OK"* ]]
 }
 
 @test "--no-plugin-check + --dry-run combined" {
-  run "$SCRIPT" --no-plugin-check --dry-run
+  run "$SCRIPT" --no-plugin-check --dry-run --no-orphan-cleanup
   [ "$status" -eq 0 ]
   [[ "$output" == *"dry-run"* ]]
 }
