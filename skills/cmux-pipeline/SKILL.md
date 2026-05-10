@@ -1,7 +1,7 @@
 ---
 name: cmux-pipeline
 description: GStack + GSD + Superpowers + build-loop을 cmux pane + codex CLI 기반으로 통합하는 자율 빌드 파이프라인. /build <topic> 한 줄로 spec → 페이즈 분해 → TDD 루프 → 통합까지 진행. claude orch가 plan/refactor를 담당하고 long-lived codex worker가 코드 작성. 컨텍스트는 /compact로 관리.
-version: 0.1.0
+version: 0.6.1
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent
 ---
 
